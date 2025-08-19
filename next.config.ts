@@ -1,12 +1,20 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable static export for platforms like Netlify/GitHub Pages
-  output: 'export',
-  trailingSlash: true,
+  // Vercel optimized configuration
+  // Remove static export for Vercel - it supports SSR/ISR
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
+  },
   images: {
-    unoptimized: true
-  }
+    formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
 };
 
 export default nextConfig;
