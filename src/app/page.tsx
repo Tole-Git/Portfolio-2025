@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, Send } from 'lucide-react';
+import { ChevronUp, ChevronDown, ArrowUp, MessageSquare, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -21,6 +21,13 @@ const categories = [
 ];
 
 export default function Home() {
+  // Authentication states
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [authCheckComplete, setAuthCheckComplete] = useState(false);
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +35,8 @@ export default function Home() {
   const [showGoToTop, setShowGoToTop] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const [isClient, setIsClient] = useState(false);
+  const [showMiniHeader, setShowMiniHeader] = useState(false);
+  const [isMiniHeaderExpanded, setIsMiniHeaderExpanded] = useState(true);
   
   // Animation sequence states
   const [isAnimating, setIsAnimating] = useState(false);
@@ -37,10 +46,86 @@ export default function Home() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aboutMeRef = useRef<HTMLDivElement>(null);
+  const miniMessagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsClient(true);
+    // Check authentication status on mount
+    checkAuthStatus();
   }, []);
+
+  // Check if user is already authenticated
+  const checkAuthStatus = async () => {
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      setIsAuthenticated(data.authenticated);
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setAuthCheckComplete(true);
+    }
+  };
+
+  // Handle login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password.trim() || isAuthenticating) return;
+
+    setIsAuthenticating(true);
+    setAuthError('');
+
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setIsAuthenticated(true);
+        setPassword('');
+        setAuthError('');
+      } else {
+        setAuthError(data.error || 'Authentication failed');
+        setPassword('');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setAuthError('Connection error. Please try again.');
+      setPassword('');
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth', {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      setIsAuthenticated(false);
+      setMessages([]);
+      setShowChat(false);
+      setTitleVisible(true);
+      setChatAtBottom(false);
+      setMessagesVisible(false);
+      setIsAnimating(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -49,15 +134,25 @@ export default function Home() {
       
       // Show go to top button when scrolled down
       setShowGoToTop(currentScrollY > window.innerHeight / 2);
+      
+      // Show mini header when scrolled down and there are messages
+      setShowMiniHeader(currentScrollY > window.innerHeight / 2 && messages.length > 0);
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [messages.length]);
 
   useEffect(() => {
     // messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Auto-scroll mini messages to bottom when messages update and mini header is visible
+  useEffect(() => {
+    if (showMiniHeader && isMiniHeaderExpanded && miniMessagesEndRef.current) {
+      miniMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, showMiniHeader, isMiniHeaderExpanded]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,9 +181,13 @@ export default function Home() {
     setTimeout(() => {
       setMessages(prev => [...prev, userMessage]);
       setMessagesVisible(true);
-      setIsLoading(true);
       setIsAnimating(false);
     }, 1600); // Wait for title fade + chat drop animations
+    
+    // Start loading immediately after user message is added
+    setTimeout(() => {
+      setIsLoading(true);
+    }, 1650); // Start loading right after messages are visible
 
     // Wait for the animation sequence to complete before starting API call
     setTimeout(async () => {
@@ -164,7 +263,31 @@ export default function Home() {
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      // Calculate the offset needed to account for headers
+      let offset = -100; // Base offset for the sticky navigation header
+      
+      // Add mini header height if it's visible
+      if (showMiniHeader) {
+        offset += isMiniHeaderExpanded ? window.innerHeight * 0.2 : 48; // 20vh or 3rem (48px)
+      }
+      
+      // If there are chat messages, scroll to show them at the bottom
+      if (messages.length > 0 && chatAtBottom) {
+        // Scroll to position the section just below the chat messages
+        const chatContainer = document.querySelector('[data-chat-container]');
+        if (chatContainer) {
+          const chatHeight = chatContainer.getBoundingClientRect().height;
+          offset += chatHeight + 32; // Add some padding
+        }
+      }
+      
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - offset;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
     }
   };
 
@@ -181,83 +304,243 @@ export default function Home() {
 
   const titleOpacity = !titleVisible ? 0 : (showChat ? Math.max(0, 1 - scrollY / 300) : 1);
 
-  if (!isClient) {
+  // Show loading screen while checking client and auth status
+  if (!isClient || !authCheckComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl md:text-6xl font-light text-gray-300 mb-2">Hello, I&apos;m</h1>
-          <h2 className="text-6xl md:text-8xl font-bold text-white ml-8">TONY LE</h2>
+      <div className="min-h-screen text-white flex items-center justify-center relative overflow-hidden">
+        {/* Modern Radial Gradient Background - Consistent with main component */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+          {/* Primary radial gradient - Microsoft/Google inspired */}
+          <div className="absolute top-0 left-0 w-full h-full radial-cyan-blue"></div>
+          {/* Secondary accent gradient */}
+          <div className="absolute top-1/4 right-0 w-96 h-96 radial-cyan-blue rounded-full blur-3xl"></div>
+          {/* Tertiary subtle gradient */}
+          <div className="absolute bottom-0 left-1/4 w-80 h-80 radial-purple rounded-full blur-2xl"></div>
+          {/* Additional depth layer */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-indigo-blue rounded-full blur-3xl"></div>
+        </div>
+        <div className="text-center relative z-10">
+          {!authCheckComplete ? (
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 bg-white rounded-full animate-pulse"></div>
+              <div className="w-4 h-4 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-4 h-4 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          ) : (
+            <>
+              <h1 className="text-4xl md:text-6xl font-light text-gray-300 mb-2">Hello, I&apos;m</h1>
+              <h2 className="text-6xl md:text-8xl font-bold text-white ml-8">TONY LE</h2>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen text-white flex items-center justify-center relative overflow-hidden">
+        {/* Modern Radial Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+          <div className="absolute top-0 left-0 w-full h-full radial-cyan-blue"></div>
+          <div className="absolute top-1/4 right-0 w-96 h-96 radial-cyan-blue rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-1/4 w-80 h-80 radial-purple rounded-full blur-2xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-indigo-blue rounded-full blur-3xl"></div>
+        </div>
+        
+        <div className="text-center relative z-10 max-w-md w-full mx-4">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setAuthError(''); // Clear error when typing
+              }}
+              placeholder="Password"
+              className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={isAuthenticating}
+              autoComplete="current-password"
+              maxLength={50}
+            />
+
+            {authError && (
+              <div className="text-red-400 text-sm text-center bg-red-900/20 border border-red-500/30 rounded-lg py-2 px-4">
+                {authError}
+              </div>
+            )}
+          </form>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+    <div className="min-h-screen text-white relative overflow-hidden">
+                    {/* Modern Radial Gradient Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+                  {/* Primary radial gradient - Microsoft/Google inspired */}
+          <div className="absolute top-0 left-0 w-full h-full radial-green"></div>
+          {/* Secondary accent gradient */}
+          <div className="absolute top-1/4 right-0 w-96 h-96 radial-cyan-blue rounded-full blur-3xl"></div>
+          {/* Tertiary subtle gradient */}
+          <div className="absolute bottom-0 left-1/4 w-80 h-80 radial-purple rounded-full blur-2xl"></div>
+        {/* Additional depth layer */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-indigo-blue rounded-full blur-3xl"></div>
+      </div>
       {/* Sticky Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
-        <nav className="flex justify-center space-x-2 sm:space-x-4 md:space-x-6 lg:space-x-8 py-3 md:py-4 px-4">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => scrollToSection(category.id)}
-              className="text-white hover:text-gray-300 transition-colors duration-200 text-xs sm:text-sm font-medium whitespace-nowrap px-1 sm:px-2"
-            >
-              {category.title}
-            </button>
-          ))}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-b border-white/10">
+        <nav className="flex justify-between items-center py-3 md:py-4 px-4">
+          <div className="flex justify-center flex-1 space-x-2 sm:space-x-4 md:space-x-6 lg:space-x-8">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => scrollToSection(category.id)}
+                className="text-white hover:text-gray-300 transition-colors duration-200 text-xs sm:text-sm font-medium whitespace-nowrap px-1 sm:px-2"
+              >
+                {category.title}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-gray-400 hover:text-white transition-colors duration-200 text-xs sm:text-sm font-medium flex items-center space-x-1 px-2"
+            title="Logout"
+          >
+            <X size={16} />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
         </nav>
       </header>
 
+      {/* Mini Header Messages */}
+      <AnimatePresence>
+        {showMiniHeader && (
+          <motion.div
+            initial={{ opacity: 0, y: -100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -100 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="fixed top-16 left-0 right-0 z-40 bg-black/20 backdrop-blur-md border-b border-white/10"
+          >
+            <div className={`transition-all duration-300 ease-in-out ${
+              isMiniHeaderExpanded ? 'h-[20vh]' : 'h-12'
+            }`}>
+              {/* Mini Header Controls */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+                <div className="flex items-center space-x-2">
+                  <MessageSquare size={16} className="text-gray-300" />
+                  <span className="text-sm text-gray-300">Chat Messages</span>
+                  <span className="text-xs text-gray-400">({messages.length})</span>
+                </div>
+                <button
+                  onClick={() => setIsMiniHeaderExpanded(!isMiniHeaderExpanded)}
+                  className="p-1 hover:bg-white/10 rounded transition-colors duration-200"
+                >
+                  {isMiniHeaderExpanded ? (
+                    <ChevronUp size={16} className="text-gray-300" />
+                  ) : (
+                    <ChevronDown size={16} className="text-gray-300" />
+                  )}
+                </button>
+              </div>
+
+              {/* Mini Messages Container */}
+              {isMiniHeaderExpanded && (
+                <div className="h-[calc(20vh-3rem)] overflow-y-auto px-4 py-2 space-y-2">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`text-xs ${
+                        message.role === 'user'
+                          ? 'p-2 rounded-lg bg-blue-600/80 ml-auto max-w-[60%] min-w-[20%] w-fit'
+                          : 'p-2 rounded-lg bg-gray-700/80 mr-auto max-w-screen'
+                      }`}
+                    >
+                      {message.role === 'user' ? (
+                        <p className="text-white whitespace-pre-wrap break-words">{message.content}</p>
+                      ) : (
+                        <div className="text-gray-100 prose prose-xs prose-invert max-w-none">
+                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="bg-gray-700/80 p-2 rounded-lg mr-auto max-w-[80%]">
+                      <div className="flex space-x-1">
+                        <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={miniMessagesEndRef} />
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Homepage Title and Chat */}
-      <div className={`min-h-screen flex flex-col items-center px-8 transition-all duration-800 ease-in-out ${
-        chatAtBottom ? 'justify-start pt-24' : 'justify-center'
+      <div className={`min-h-screen flex flex-col items-center px-8 transition-all duration-800 ease-in-out relative z-10 ${
+        chatAtBottom ? 'justify-start pt-24 pb-8' : 'justify-center'
       }`}>
-        <motion.div
-          initial={{ opacity: 1 }}
-          animate={{ 
-            opacity: titleOpacity,
-            y: !titleVisible ? -50 : 0
-          }}
-          transition={{ 
-            opacity: { duration: 0.8, ease: "easeInOut" },
-            y: { duration: 0.8, ease: "easeInOut" }
-          }}
-          className="text-center mb-8"
-        >
-          <motion.h1
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ 
-              y: 0, 
-              opacity: titleOpacity 
-            }}
-            transition={{ 
-              delay: 0.2,
-              opacity: { duration: 0.8, ease: "easeInOut" }
-            }}
-            className="text-4xl md:text-6xl font-light text-gray-300 mb-2"
-          >
-            Hello, I&apos;m
-          </motion.h1>
-          <motion.h2
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ 
-              y: 0, 
-              opacity: titleOpacity 
-            }}
-            transition={{ 
-              delay: 0.4,
-              opacity: { duration: 0.8, ease: "easeInOut" }
-            }}
-            className="text-6xl md:text-8xl font-bold text-white ml-8"
-          >
-            TONY LE
-          </motion.h2>
-        </motion.div>
+        <AnimatePresence>
+          {titleVisible && (
+            <motion.div
+              initial={{ opacity: 1 }}
+              animate={{ 
+                opacity: titleOpacity,
+                y: 0
+              }}
+              exit={{ 
+                opacity: 0,
+                y: -50
+              }}
+              transition={{ 
+                opacity: { duration: 0.8, ease: "easeInOut" },
+                y: { duration: 0.8, ease: "easeInOut" }
+              }}
+              className="text-center mb-8"
+            >
+              <motion.h1
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ 
+                  y: 0, 
+                  opacity: titleOpacity 
+                }}
+                transition={{ 
+                  delay: 0.2,
+                  opacity: { duration: 0.8, ease: "easeInOut" }
+                }}
+                className="text-4xl md:text-6xl font-light text-gray-300 mb-2"
+              >
+                Hello, I&apos;m
+              </motion.h1>
+              <motion.h2
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ 
+                  y: 0, 
+                  opacity: titleOpacity 
+                }}
+                transition={{ 
+                  delay: 0.4,
+                  opacity: { duration: 0.8, ease: "easeInOut" }
+                }}
+                className="text-6xl md:text-8xl font-bold text-white ml-8"
+              >
+                TONY LE
+              </motion.h2>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Chat Interface */}
         <motion.div
-          className={`w-full max-w-4xl ${chatAtBottom ? 'fixed top-24 left-1/2 transform -translate-x-1/2 z-40 h-[calc(100vh-12rem)] flex flex-col' : ''}`}
+          className={`w-full max-w-4xl ${chatAtBottom ? 'flex flex-col max-h-[60vh]' : ''}`}
           initial={false}
           animate={{
             y: chatAtBottom ? 0 : 0
@@ -276,7 +559,8 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className={`mb-6 overflow-y-auto space-y-4 px-4 ${chatAtBottom ? 'flex-1' : 'max-h-96'}`}
+                className={`mb-6 overflow-y-auto space-y-4 px-4 ${chatAtBottom ? 'flex-1 max-h-[calc(100vh-280px)]' : 'max-h-96'}`}
+                data-chat-container
               >
                 {messages.map((message) => (
                   <motion.div
@@ -285,7 +569,7 @@ export default function Home() {
                     animate={{ opacity: 1, y: 0 }}
                     className={`p-4 rounded-2xl ${
                       message.role === 'user'
-                        ? 'bg-blue-600 ml-auto max-w-xs'
+                        ? 'bg-blue-600 ml-auto max-w-xs w-fit min-w-[20%]'
                         : 'mr-auto max-w-screen'
                     }`}
                   >
@@ -305,9 +589,9 @@ export default function Home() {
                     className="bg-gray-700 p-4 rounded-2xl mr-auto max-w-xs"
                   >
                     <div className="flex space-x-2">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                     </div>
                   </motion.div>
                 )}
@@ -316,34 +600,41 @@ export default function Home() {
             )}
           </AnimatePresence>
 
-          {/* Chat Input */}
-          <form onSubmit={handleSubmit} className={`relative ${chatAtBottom ? 'mt-4' : ''}`}>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask me anything..."
-              className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || isLoading}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
-            >
-              <Send size={20} />
-            </button>
-          </form>
+          {/* Chat Input - Only render when not chatAtBottom */}
+          {!chatAtBottom && (
+            <form onSubmit={handleSubmit} className="relative">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask me anything..."
+                className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || isLoading}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
+              >
+                <ArrowUp size={20} />
+              </button>
+            </form>
+          )}
         </motion.div>
       </div>
 
       {/* About Me Container */}
       <div 
         className="relative z-10"
+        style={{ 
+          marginTop: showMiniHeader ? (isMiniHeaderExpanded ? '20vh' : '3rem') : '0px'
+        }}
       >
         <motion.div
           ref={aboutMeRef}
-          className="bg-slate-800 text-white min-h-screen pt-24 pb-24"
+          className={`bg-slate-800 text-white min-h-screen pt-24 mt-8 ${
+            chatAtBottom ? 'pb-32' : 'pb-24'
+          }`}
         >
         <div className="container mx-auto px-8">
           <h2 className="text-4xl font-bold text-center mb-12">About Me</h2>
@@ -469,6 +760,39 @@ export default function Home() {
         </motion.div>
       </div>
 
+      {/* Sticky Chat Input - Only when chat is active */}
+      <AnimatePresence>
+        {chatAtBottom && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-t border-white/10 p-4"
+          >
+            <div className="max-w-4xl mx-auto">
+              <form onSubmit={handleSubmit} className="relative">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask me anything..."
+                  className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isLoading}
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isLoading}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
+                >
+                  <ArrowUp size={20} />
+                </button>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Go to Top Button */}
       <AnimatePresence>
         {showGoToTop && (
@@ -477,7 +801,9 @@ export default function Home() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0 }}
             onClick={scrollToTop}
-            className="fixed bottom-8 right-8 z-50 p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-colors duration-200"
+            className={`fixed z-50 p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-colors duration-200 ${
+              chatAtBottom ? 'bottom-24 right-8' : 'bottom-8 right-8'
+            }`}
           >
             <ChevronUp size={24} />
           </motion.button>
