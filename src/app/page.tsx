@@ -140,7 +140,7 @@ export default function Home() {
                       : msg
                   ));
                 }
-              } catch (e) {
+              } catch {
                 // Ignore parse errors
               }
             }
@@ -184,7 +184,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-4xl md:text-6xl font-light text-gray-300 mb-2">Hello, I'm</h1>
+          <h1 className="text-4xl md:text-6xl font-light text-gray-300 mb-2">Hello, I&apos;m</h1>
           <h2 className="text-6xl md:text-8xl font-bold text-white ml-8">TONY LE</h2>
         </div>
       </div>
@@ -236,7 +236,7 @@ export default function Home() {
             }}
             className="text-4xl md:text-6xl font-light text-gray-300 mb-2"
           >
-            Hello, I'm
+            Hello, I&apos;m
           </motion.h1>
           <motion.h2
             initial={{ y: 20, opacity: 0 }}
