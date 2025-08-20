@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUp, Send } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   id: string;
@@ -195,12 +196,12 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
       {/* Sticky Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
-        <nav className="flex justify-center space-x-8 py-4">
+        <nav className="flex justify-center space-x-2 sm:space-x-4 md:space-x-6 lg:space-x-8 py-3 md:py-4 px-4">
           {categories.map((category) => (
             <button
               key={category.id}
               onClick={() => scrollToSection(category.id)}
-              className="text-white hover:text-gray-300 transition-colors duration-200 text-sm font-medium"
+              className="text-white hover:text-gray-300 transition-colors duration-200 text-xs sm:text-sm font-medium whitespace-nowrap px-1 sm:px-2"
             >
               {category.title}
             </button>
@@ -256,7 +257,7 @@ export default function Home() {
 
         {/* Chat Interface */}
         <motion.div
-          className={`w-full max-w-4xl ${chatAtBottom ? 'fixed bottom-8 left-1/2 transform -translate-x-1/2 z-40' : ''}`}
+          className={`w-full max-w-4xl ${chatAtBottom ? 'fixed top-24 left-1/2 transform -translate-x-1/2 z-40 h-[calc(100vh-12rem)] flex flex-col' : ''}`}
           initial={false}
           animate={{
             y: chatAtBottom ? 0 : 0
@@ -275,7 +276,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="mb-6 max-h-96 overflow-y-auto space-y-4 px-4"
+                className={`mb-6 overflow-y-auto space-y-4 px-4 ${chatAtBottom ? 'flex-1' : 'max-h-96'}`}
               >
                 {messages.map((message) => (
                   <motion.div
@@ -284,11 +285,17 @@ export default function Home() {
                     animate={{ opacity: 1, y: 0 }}
                     className={`p-4 rounded-2xl ${
                       message.role === 'user'
-                        ? 'bg-blue-600 ml-auto w-[min-content]'
-                        : 'mr-auto'
+                        ? 'bg-blue-600 ml-auto max-w-xs'
+                        : 'mr-auto max-w-screen'
                     }`}
                   >
-                    <p className="text-white whitespace-pre-wrap">{message.content}</p>
+                    {message.role === 'user' ? (
+                      <p className="text-white whitespace-pre-wrap">{message.content}</p>
+                    ) : (
+                      <div className="markdown-content">
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                      </div>
+                    )}
                   </motion.div>
                 ))}
                 {isLoading && (
@@ -310,7 +317,7 @@ export default function Home() {
           </AnimatePresence>
 
           {/* Chat Input */}
-          <form onSubmit={handleSubmit} className="relative">
+          <form onSubmit={handleSubmit} className={`relative ${chatAtBottom ? 'mt-4' : ''}`}>
             <input
               type="text"
               value={input}
