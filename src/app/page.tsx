@@ -164,46 +164,60 @@ export default function Home() {
       content: input.trim()
     };
 
-    // Start animation sequence
-    setIsAnimating(true);
+    const isFirstMessage = messages.length === 0;
     setInput('');
-    
-    // Step 1: Fade out title
-    setTitleVisible(false);
-    
-    // Step 2: After title fade, drop chat to bottom
-    setTimeout(() => {
-      setChatAtBottom(true);
-      setShowChat(true);
-    }, 800); // Wait for title fade animation
-    
-    // Step 3: After chat drops, show messages and start API call
-    setTimeout(() => {
-      setMessages(prev => [...prev, userMessage]);
-      setMessagesVisible(true);
-      setIsAnimating(false);
-    }, 1600); // Wait for title fade + chat drop animations
-    
-    // Start loading immediately after user message is added
-    setTimeout(() => {
-      setIsLoading(true);
-    }, 1650); // Start loading right after messages are visible
 
-    // Wait for the animation sequence to complete before starting API call
-    setTimeout(async () => {
-      try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messages: [...messages, userMessage].map(msg => ({
-              role: msg.role,
-              content: msg.content
-            }))
-          }),
-        });
+    if (isFirstMessage) {
+      // First message - run the animation sequence
+      setIsAnimating(true);
+      
+      // Step 1: Fade out title
+      setTitleVisible(false);
+      
+      // Step 2: After title fade, drop chat to bottom
+      setTimeout(() => {
+        setChatAtBottom(true);
+        setShowChat(true);
+      }, 800);
+      
+      // Step 3: After chat drops, show messages and start API call
+      setTimeout(() => {
+        setMessages(prev => [...prev, userMessage]);
+        setMessagesVisible(true);
+        setIsAnimating(false);
+        // Start API call for first message
+        handleApiCall(userMessage);
+      }, 1600);
+    } else {
+      // Subsequent messages - no animation delays
+      setMessages(prev => [...prev, userMessage]);
+      
+      // Auto scroll to top if mini header is not visible
+      if (!showMiniHeader) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      
+      // Start API call immediately
+      handleApiCall(userMessage);
+    }
+  };
+
+  const handleApiCall = async (userMessage: Message) => {
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }))
+        }),
+      });
 
       if (!response.ok) throw new Error('Failed to fetch');
 
@@ -247,37 +261,39 @@ export default function Home() {
           }
         }
       }
-      } catch (error) {
-        console.error('Error sending message:', error);
-        setMessages(prev => [...prev, {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.'
-        }]);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 1600); // Wait for animation sequence to complete
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.'
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
       // Calculate the offset needed to account for headers
-      let offset = -100; // Base offset for the sticky navigation header
+      let offset = 80; // Base offset for the sticky navigation header (64px + padding)
       
       // Add mini header height if it's visible
       if (showMiniHeader) {
-        offset += isMiniHeaderExpanded ? window.innerHeight * 0.2 : 48; // 20vh or 3rem (48px)
+        offset += isMiniHeaderExpanded ? window.innerHeight * 0 : -200; // Increased offsets to scroll higher
       }
       
-      // If there are chat messages, scroll to show them at the bottom
+      // If there are chat messages, we need additional offset for the chat container
       if (messages.length > 0 && chatAtBottom) {
-        // Scroll to position the section just below the chat messages
-        const chatContainer = document.querySelector('[data-chat-container]');
-        if (chatContainer) {
-          const chatHeight = chatContainer.getBoundingClientRect().height;
-          offset += chatHeight + 32; // Add some padding
+        // Get the actual height of the chat interface
+        const chatInterface = document.querySelector('[data-chat-interface]');
+        if (chatInterface) {
+          const chatHeight = chatInterface.getBoundingClientRect().height;
+          offset += chatHeight + 16; // Add chat height plus some padding
+        } else {
+          // Fallback if chat interface not found
+          offset += 300; // Approximate chat height
         }
       }
       
@@ -285,7 +301,7 @@ export default function Home() {
       const offsetPosition = elementPosition - offset;
       
       window.scrollTo({
-        top: offsetPosition,
+        top: Math.max(0, offsetPosition), // Ensure we don't scroll to negative position
         behavior: 'smooth'
       });
     }
@@ -293,13 +309,6 @@ export default function Home() {
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setShowChat(false);
-    setMessages([]);
-    // Reset animation states
-    setTitleVisible(true);
-    setChatAtBottom(false);
-    setMessagesVisible(false);
-    setIsAnimating(false);
   };
 
   const titleOpacity = !titleVisible ? 0 : (showChat ? Math.max(0, 1 - scrollY / 300) : 1);
@@ -391,13 +400,13 @@ export default function Home() {
       </div>
       {/* Sticky Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-b border-white/10">
-        <nav className="flex justify-between items-center py-3 md:py-4 px-4">
-          <div className="flex justify-center flex-1 space-x-2 sm:space-x-4 md:space-x-6 lg:space-x-8">
+        <nav className="flex justify-between items-center py-2 px-2 sm:px-4">
+          <div className="flex justify-center flex-1 space-x-1 sm:space-x-2 md:space-x-4 lg:space-x-6">
             {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => scrollToSection(category.id)}
-                className="text-white hover:text-gray-300 transition-colors duration-200 text-xs sm:text-sm font-medium whitespace-nowrap px-1 sm:px-2"
+                className="text-white hover:text-gray-300 transition-colors duration-200 text-[10px] xs:text-xs sm:text-sm font-medium whitespace-nowrap px-0.5 xs:px-1 sm:px-2"
               >
                 {category.title}
               </button>
@@ -405,11 +414,11 @@ export default function Home() {
           </div>
           <button
             onClick={handleLogout}
-            className="text-gray-400 hover:text-white transition-colors duration-200 text-xs sm:text-sm font-medium flex items-center space-x-1 px-2"
+            className="text-gray-400 hover:text-white transition-colors duration-200 text-[10px] xs:text-xs sm:text-sm font-medium flex items-center space-x-1 px-1 sm:px-2 ml-1"
             title="Logout"
           >
-            <X size={16} />
-            <span className="hidden sm:inline">Logout</span>
+            <X size={14} className="sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline">Logout</span>
           </button>
         </nav>
       </header>
@@ -422,7 +431,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -100 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed top-16 left-0 right-0 z-40 bg-black/20 backdrop-blur-md border-b border-white/10"
+            className="fixed top-9 left-0 right-0 z-40 bg-black/20 backdrop-blur-md border-b border-white/10"
           >
             <div className={`transition-all duration-300 ease-in-out ${
               isMiniHeaderExpanded ? 'h-[20vh]' : 'h-12'
@@ -455,7 +464,7 @@ export default function Home() {
                       className={`text-xs ${
                         message.role === 'user'
                           ? 'p-2 rounded-lg bg-blue-600/80 ml-auto max-w-[60%] min-w-[20%] w-fit'
-                          : 'p-2 rounded-lg bg-gray-700/80 mr-auto max-w-screen'
+                          : 'p-2 rounded-lg mr-auto max-w-screen'
                       }`}
                     >
                       {message.role === 'user' ? (
@@ -468,7 +477,7 @@ export default function Home() {
                     </div>
                   ))}
                   {isLoading && (
-                    <div className="bg-gray-700/80 p-2 rounded-lg mr-auto max-w-[80%]">
+                    <div className="bg-gray-700/80 p-2 rounded-lg mr-auto w-fit">
                       <div className="flex space-x-1">
                         <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
                         <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
@@ -485,8 +494,8 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Homepage Title and Chat */}
-      <div className={`min-h-screen flex flex-col items-center px-8 transition-all duration-800 ease-in-out relative z-10 ${
-        chatAtBottom ? 'justify-start pt-24 pb-8' : 'justify-center'
+      <div className={`min-h-screen flex flex-col items-center transition-all duration-800 ease-in-out relative z-10 ${
+        chatAtBottom ? 'justify-start pt-0 pb-0 px-0 w-screen h-screen' : 'justify-center px-8'
       }`}>
         <AnimatePresence>
           {titleVisible && (
@@ -540,7 +549,7 @@ export default function Home() {
 
         {/* Chat Interface */}
         <motion.div
-          className={`w-full max-w-4xl ${chatAtBottom ? 'flex flex-col max-h-[60vh]' : ''}`}
+          className={`${chatAtBottom ? 'w-screen h-screen flex flex-col' : 'w-full max-w-4xl'}`}
           initial={false}
           animate={{
             y: chatAtBottom ? 0 : 0
@@ -550,6 +559,7 @@ export default function Home() {
             ease: "easeInOut",
             delay: titleVisible ? 0 : 0.2
           }}
+          data-chat-interface
         >
           {/* Chat Messages */}
           <AnimatePresence>
@@ -559,7 +569,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className={`mb-6 overflow-y-auto space-y-4 px-4 ${chatAtBottom ? 'flex-1 max-h-[calc(100vh-280px)]' : 'max-h-96'}`}
+                className={`overflow-y-auto space-y-4 ${chatAtBottom ? 'flex-1 h-full px-8 pt-20 pb-4' : 'max-h-96 mb-6 px-4'}`}
                 data-chat-container
               >
                 {messages.map((message) => (
@@ -586,7 +596,7 @@ export default function Home() {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="bg-gray-700 p-4 rounded-2xl mr-auto max-w-xs"
+                    className="bg-gray-700 p-4 rounded-2xl mr-auto w-fit"
                   >
                     <div className="flex space-x-2">
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
@@ -602,18 +612,26 @@ export default function Home() {
 
           {/* Chat Input - Only render when not chatAtBottom */}
           {!chatAtBottom && (
-            <form onSubmit={handleSubmit} className="relative">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!input.trim() || isLoading || isAnimating) return;
+              handleSubmit(e);
+            }} className="relative">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (isLoading || isAnimating)) {
+                    e.preventDefault();
+                  }
+                }}
                 placeholder="Ask me anything..."
                 className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={isLoading}
               />
               <button
                 type="submit"
-                disabled={!input.trim() || isLoading}
+                disabled={!input.trim() || isLoading || isAnimating}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
               >
                 <ArrowUp size={20} />
@@ -771,18 +789,26 @@ export default function Home() {
             className="fixed bottom-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-t border-white/10 p-4"
           >
             <div className="max-w-4xl mx-auto">
-              <form onSubmit={handleSubmit} className="relative">
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (!input.trim() || isLoading || isAnimating) return;
+                handleSubmit(e);
+              }} className="relative">
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (isLoading || isAnimating)) {
+                      e.preventDefault();
+                    }
+                  }}
                   placeholder="Ask me anything..."
                   className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={isLoading}
                 />
                 <button
                   type="submit"
-                  disabled={!input.trim() || isLoading}
+                  disabled={!input.trim() || isLoading || isAnimating}
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
                 >
                   <ArrowUp size={20} />
