@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import crypto from 'crypto';
 
 // Store the hashed password securely on the server
-const CORRECT_PASSWORD_HASH = '3ee0ef67e5441065fe9c8996436ba7b1e4a7c589662b35f07a41d435d3aae2cb'; // SHA256 hash of "huhlo"
+const CORRECT_PASSWORD_HASH = 'a2056e15295061c00d2fc2ac183e98f74b0522854c0f440f6a5c29b741cd729e';
 
 // Generate a secure session token
 function generateSessionToken(): string {
