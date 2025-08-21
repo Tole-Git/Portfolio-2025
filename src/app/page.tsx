@@ -52,7 +52,16 @@ export default function Home() {
     setIsClient(true);
     // Check authentication status on mount
     checkAuthStatus();
-  }, []);
+    
+    // Set up periodic session checking (every 5 minutes)
+    const sessionCheckInterval = setInterval(() => {
+      if (isAuthenticated) {
+        checkAuthStatus();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(sessionCheckInterval);
+  }, [isAuthenticated]);
 
   // Check if user is already authenticated
   const checkAuthStatus = async () => {
@@ -62,7 +71,21 @@ export default function Home() {
         credentials: 'include',
       });
       const data = await response.json();
-      setIsAuthenticated(data.authenticated);
+      
+      // If session expired or deployment reset occurred, automatically logout
+      if (!data.authenticated && isAuthenticated) {
+        // Session was valid but now invalid - force logout
+        setIsAuthenticated(false);
+        setMessages([]);
+        setShowChat(false);
+        setTitleVisible(true);
+        setChatAtBottom(false);
+        setMessagesVisible(false);
+        setIsAnimating(false);
+        console.log('Session expired or deployment reset - automatically logged out');
+      } else {
+        setIsAuthenticated(data.authenticated);
+      }
     } catch (error) {
       console.error('Auth check failed:', error);
       setIsAuthenticated(false);
