@@ -14,11 +14,28 @@ interface Message {
 const categories = [
   { id: 'summary', title: 'Summary' },
   { id: 'experience', title: 'Experience' },
-  { id: 'projects', title: 'Projects' },
-  { id: 'skills', title: 'Skills' },
-  { id: 'education', title: 'Education' },
-  { id: 'achievements', title: 'Achievements' }
+  { id: 'projects-skills', title: 'Projects & Skills' },
+  { id: 'education-achievements', title: 'Education & Achievements' },
+  { id: 'contact', title: 'Contact' }
 ];
+
+// Neon color classes for tags
+const neonColors = [
+  'tag-neon-emerald',
+  'tag-neon-purple', 
+  'tag-neon-blue',
+  'tag-neon-amber',
+  'tag-neon-cyan',
+  'tag-neon-lime',
+  'tag-neon-red',
+  'tag-neon-indigo'
+];
+
+// Function to get consistent color for a tag based on its text
+const getTagColor = (tagText: string): string => {
+  const index = tagText.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % neonColors.length;
+  return neonColors[index];
+};
 
 export default function Home() {
   // Authentication states
@@ -299,32 +316,14 @@ export default function Home() {
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      // Calculate the offset needed to account for headers
-      let offset = 80; // Base offset for the sticky navigation header (64px + padding)
-      
-      // Add mini header height if it's visible
-      if (showMiniHeader) {
-        offset += isMiniHeaderExpanded ? window.innerHeight * 0 : -200; // Increased offsets to scroll higher
-      }
-      
-      // If there are chat messages, we need additional offset for the chat container
-      if (messages.length > 0 && chatAtBottom) {
-        // Get the actual height of the chat interface
-        const chatInterface = document.querySelector('[data-chat-interface]');
-        if (chatInterface) {
-          const chatHeight = chatInterface.getBoundingClientRect().height;
-          offset += chatHeight + 16; // Add chat height plus some padding
-        } else {
-          // Fallback if chat interface not found
-          offset += 300; // Approximate chat height
-        }
-      }
+      // Get the actual header height dynamically
+      const header = document.querySelector('header');
       
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-      const offsetPosition = elementPosition - offset;
+      const targetPosition = elementPosition;
       
       window.scrollTo({
-        top: Math.max(0, offsetPosition), // Ensure we don't scroll to negative position
+        top: Math.max(0, targetPosition),
         behavior: 'smooth'
       });
     }
@@ -340,16 +339,12 @@ export default function Home() {
   if (!isClient || !authCheckComplete) {
     return (
       <div className="min-h-screen text-white flex items-center justify-center relative overflow-hidden">
-        {/* Modern Radial Gradient Background - Consistent with main component */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-          {/* Primary radial gradient - Microsoft/Google inspired */}
-          <div className="absolute top-0 left-0 w-full h-full radial-cyan-blue"></div>
-          {/* Secondary accent gradient */}
-          <div className="absolute top-1/4 right-0 w-96 h-96 radial-cyan-blue rounded-full blur-3xl"></div>
-          {/* Tertiary subtle gradient */}
-          <div className="absolute bottom-0 left-1/4 w-80 h-80 radial-purple rounded-full blur-2xl"></div>
-          {/* Additional depth layer */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-indigo-blue rounded-full blur-3xl"></div>
+        {/* Modern Minimal Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black">
+          {/* Subtle red accent */}
+          <div className="absolute top-0 left-0 w-full h-full radial-red-accent"></div>
+          {/* Gray depth layer */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-minimal rounded-full blur-3xl"></div>
         </div>
         <div className="text-center relative z-10">
           {!authCheckComplete ? (
@@ -373,12 +368,10 @@ export default function Home() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen text-white flex items-center justify-center relative overflow-hidden">
-        {/* Modern Radial Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-          <div className="absolute top-0 left-0 w-full h-full radial-cyan-blue"></div>
-          <div className="absolute top-1/4 right-0 w-96 h-96 radial-cyan-blue rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-1/4 w-80 h-80 radial-purple rounded-full blur-2xl"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-indigo-blue rounded-full blur-3xl"></div>
+        {/* Modern Minimal Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black">
+          <div className="absolute top-0 left-0 w-full h-full radial-red-accent"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-minimal rounded-full blur-3xl"></div>
         </div>
         
         <div className="text-center relative z-10 max-w-md w-full mx-4">
@@ -391,7 +384,7 @@ export default function Home() {
                 setAuthError(''); // Clear error when typing
               }}
               placeholder="Password"
-              className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               disabled={isAuthenticating}
               autoComplete="current-password"
               maxLength={50}
@@ -410,16 +403,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
-                    {/* Modern Radial Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-                  {/* Primary radial gradient - Microsoft/Google inspired */}
-          <div className="absolute top-0 left-0 w-full h-full radial-green"></div>
-          {/* Secondary accent gradient */}
-          <div className="absolute top-1/4 right-0 w-96 h-96 radial-cyan-blue rounded-full blur-3xl"></div>
-          {/* Tertiary subtle gradient */}
-          <div className="absolute bottom-0 left-1/4 w-80 h-80 radial-purple rounded-full blur-2xl"></div>
-        {/* Additional depth layer */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-indigo-blue rounded-full blur-3xl"></div>
+      {/* Modern Minimal Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black">
+        {/* Subtle red accent */}
+        <div className="absolute top-0 left-0 w-full h-full radial-red-accent"></div>
+        {/* Gray depth layer */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-minimal rounded-full blur-3xl"></div>
       </div>
       {/* Sticky Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-b border-white/10">
@@ -486,7 +475,7 @@ export default function Home() {
                       key={message.id}
                       className={`text-xs ${
                         message.role === 'user'
-                          ? 'p-2 rounded-lg bg-blue-600/80 ml-auto max-w-[60%] min-w-[20%] w-fit'
+                          ? 'p-2 rounded-lg bg-gray-700/50 border border-white/30 ml-auto max-w-[60%] min-w-[20%] w-fit shadow-md shadow-white/10'
                           : 'p-2 rounded-lg mr-auto max-w-screen'
                       }`}
                     >
@@ -602,7 +591,7 @@ export default function Home() {
                     animate={{ opacity: 1, y: 0 }}
                     className={`p-4 rounded-2xl ${
                       message.role === 'user'
-                        ? 'bg-blue-600 ml-auto max-w-xs w-fit min-w-[20%]'
+                        ? 'bg-gray-700/50 border border-white/30 ml-auto max-w-xs w-fit min-w-[20%] shadow-lg shadow-white/10'
                         : 'mr-auto max-w-screen'
                     }`}
                   >
@@ -650,12 +639,12 @@ export default function Home() {
                   }
                 }}
                 placeholder="Ask me anything..."
-                className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:border-white/40"
               />
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading || isAnimating}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
               >
                 <ArrowUp size={20} />
               </button>
@@ -664,141 +653,276 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* About Me Container */}
+      {/* Full-Page Sections Container */}
       <div 
         className="relative z-10"
         style={{ 
           marginTop: showMiniHeader ? (isMiniHeaderExpanded ? '20vh' : '3rem') : '0px'
         }}
       >
-        <motion.div
-          ref={aboutMeRef}
-          className={`bg-slate-800 text-white min-h-screen pt-24 mt-8 ${
-            chatAtBottom ? 'pb-32' : 'pb-24'
-          }`}
-        >
-        <div className="container mx-auto px-8">
-          <h2 className="text-4xl font-bold text-center mb-12">About Me</h2>
-          
-          {/* Summary Section */}
-          <section id="summary" className="mb-16">
-            <h3 className="text-2xl font-semibold mb-6">Summary</h3>
-            <div className="bg-slate-700 p-6 rounded-lg">
-              <p className="text-lg leading-relaxed">
-                AI Engineer with 3+ years of production AI development experience, serving 4,000+ monthly active users. 
-                Early enterprise OpenAI API adopter (August 2023) with expertise in agent-to-agent communication, 
-                MCP protocol implementation, and full-stack AI applications. Specialized in building scalable AI copilots, 
-                real-time voice systems, and custom agent architectures for enterprise environments.
-              </p>
+        {/* Summary Section - Full Page */}
+        <section id="summary" className="min-h-screen flex items-center px-8">
+          <motion.div
+            ref={aboutMeRef}
+            className="max-w-6xl mx-auto w-full"
+          >
+            <div className="border-t border-gray-600 pt-8 mb-8">
+              <h2 className="text-sm font-medium text-gray-400 tracking-widest uppercase mb-8">SUMMARY</h2>
             </div>
-          </section>
+            <p className="text-2xl leading-relaxed text-gray-300 max-w-4xl">
+              AI Engineer with 3+ years of production AI development experience, serving 4,000+ monthly active users. 
+              Early enterprise OpenAI API adopter (August 2023) with expertise in agent-to-agent communication, 
+              MCP protocol implementation, and full-stack AI applications. Specialized in building scalable AI copilots, 
+              real-time voice systems, and custom agent architectures for enterprise environments.
+            </p>
+          </motion.div>
+        </section>
 
-          {/* Experience Section */}
-          <section id="experience" className="mb-16">
-            <h3 className="text-2xl font-semibold mb-6">Professional Experience</h3>
-            <div className="space-y-8">
-              <div className="bg-slate-700 p-6 rounded-lg">
-                <h4 className="text-xl font-semibold mb-2">Software Engineer</h4>
-                <p className="text-blue-400 mb-2">T-Mobile | May 2024 – Present | Bellevue, WA</p>
-                <ul className="space-y-2 text-gray-200">
-                  <li>• Production AI Systems: Architect and maintain AI copilot serving 4,000+ unique monthly users</li>
-                  <li>• MCP Innovation: First engineer in organization to implement Model Context Protocol (MCP)</li>
-                  <li>• Advanced AI Architecture: Built custom agent-to-agent communication systems</li>
-                  <li>• Enterprise Integration: Developed actionable AI tools including automated ticket creation</li>
-                </ul>
+        {/* Professional Experience Section - Full Page */}
+        <section id="experience" className="min-h-screen flex items-center px-8">
+          <div className="max-w-6xl mx-auto w-full">
+            <div className="border-t border-gray-600 pt-8 mb-12">
+              <h2 className="text-sm font-medium text-gray-400 tracking-widest uppercase">EXPERIENCE</h2>
+            </div>
+            
+            <div className="space-y-16">
+              <div className="border-b border-gray-700 pb-16">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <div className="flex items-center text-sm text-gray-400 mb-2">
+                      <span>2024 - PRESENT</span>
+                      <div className="w-2 h-2 bg-green-500 rounded-full mx-4"></div>
+                      <span>BELLEVUE, WA</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <h3 className="text-4xl font-light text-white mb-2">T-Mobile</h3>
+                <h4 className="text-xl text-gray-300 mb-8">Software Engineer</h4>
+                
+                <p className="text-lg text-gray-300 leading-relaxed mb-6 max-w-4xl">
+                  Architect and maintain AI copilot serving 4,000+ unique monthly users. First engineer in organization to implement Model Context Protocol (MCP). Built custom agent-to-agent communication systems and developed actionable AI tools including automated ticket creation.
+                </p>
+                
+                <div className="flex flex-wrap gap-2">
+                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('OpenAI API')}`}>OpenAI API</span>
+                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('MCP Protocol')}`}>MCP Protocol</span>
+                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('Agent Architecture')}`}>Agent Architecture</span>
+                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('Full-Stack')}`}>Full-Stack</span>
+                </div>
               </div>
               
-              <div className="bg-slate-700 p-6 rounded-lg">
-                <h4 className="text-xl font-semibold mb-2">Associate Software Engineer</h4>
-                <p className="text-blue-400 mb-2">T-Mobile | August 2022 – May 2024 | Bellevue, WA</p>
-                <ul className="space-y-2 text-gray-200">
-                  <li>• AI Pioneer: First to develop enterprise OpenAI API integration (August 2023)</li>
-                  <li>• Full-Stack Development: Led frontend development of AI troubleshooting interface</li>
-                  <li>• RAG Implementation: Designed and implemented Retrieval-Augmented Generation</li>
-                  <li>• Early Promotion: Promoted 1 year ahead of standard timeline</li>
-                </ul>
-              </div>
-            </div>
-          </section>
-
-          {/* Projects Section */}
-          <section id="projects" className="mb-16">
-            <h3 className="text-2xl font-semibold mb-6">Featured Projects</h3>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-slate-700 p-6 rounded-lg">
-                <h4 className="text-xl font-semibold mb-2">AI Receptionist System</h4>
-                <p className="text-gray-300 mb-3">October 2024 – Present</p>
-                <p className="text-gray-200">
-                  Developed intelligent voice-activated receptionist with real-time speech processing and 
-                  natural language understanding using Node.js, Twilio, Google Cloud Speech, and Gemini API.
+              <div className="border-b border-gray-700 pb-16">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <div className="flex items-center text-sm text-gray-400 mb-2">
+                      <span>2022 - 2024</span>
+                      <div className="w-2 h-2 bg-green-500 rounded-full mx-4"></div>
+                      <span>BELLEVUE, WA</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <h3 className="text-4xl font-light text-white mb-2">T-Mobile</h3>
+                <h4 className="text-xl text-gray-300 mb-8">Associate Software Engineer</h4>
+                
+                <p className="text-lg text-gray-300 leading-relaxed mb-6 max-w-4xl">
+                  First to develop enterprise OpenAI API integration (August 2023). Led frontend development of AI troubleshooting interface. Designed and implemented Retrieval-Augmented Generation. Promoted 1 year ahead of standard timeline.
                 </p>
-              </div>
-              
-              <div className="bg-slate-700 p-6 rounded-lg">
-                <h4 className="text-xl font-semibold mb-2">Medical AI Analysis Platform</h4>
-                <p className="text-gray-300 mb-3">August 2024 – Present</p>
-                <p className="text-gray-200">
-                  Created AI system for automated bloodwork analysis, parsing medical documents and 
-                  generating structured health insights with Python and AI/ML APIs.
-                </p>
+                
+                <div className="flex flex-wrap gap-2">
+                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('React')}`}>React</span>
+                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('TypeScript')}`}>TypeScript</span>
+                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('RAG')}`}>RAG</span>
+                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('AI Integration')}`}>AI Integration</span>
+                </div>
               </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Skills Section */}
-          <section id="skills" className="mb-16">
-            <h3 className="text-2xl font-semibold mb-6">Technical Skills</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-slate-700 p-6 rounded-lg">
-                <h4 className="font-semibold mb-3">AI/ML Technologies</h4>
-                <p className="text-gray-200">OpenAI API, Azure OpenAI, Google Gemini, RAG Implementation, Vector Search, Agent Communication, MCP Protocol</p>
-              </div>
-              <div className="bg-slate-700 p-6 rounded-lg">
-                <h4 className="font-semibold mb-3">Programming Languages</h4>
-                <p className="text-gray-200">Python, JavaScript, Node.js, Java, SQL, HTML, CSS</p>
-              </div>
-              <div className="bg-slate-700 p-6 rounded-lg">
-                <h4 className="font-semibold mb-3">Frameworks & Libraries</h4>
-                <p className="text-gray-200">React, Streamlit, Express, jQuery, Twilio API, Google Cloud Speech</p>
+        {/* Projects & Skills Section - Full Page */}
+        <section id="projects-skills" className="min-h-screen flex items-center px-8">
+          <div className="max-w-6xl mx-auto w-full">
+            <div className="border-t border-gray-600 pt-8 mb-12">
+              <h2 className="text-sm font-medium text-gray-400 tracking-widest uppercase">PROJECTS & SKILLS</h2>
+            </div>
+            
+            {/* Projects */}
+            <div className="mb-20">
+              <div className="space-y-12">
+                <div className="border-b border-gray-700 pb-12">
+                  <div className="flex items-center text-sm text-gray-400 mb-4">
+                    <span>OCTOBER 2024 - PRESENT</span>
+                  </div>
+                  <h3 className="text-3xl font-light text-white mb-4">AI Receptionist System</h3>
+                  <p className="text-lg text-gray-300 leading-relaxed mb-6 max-w-4xl">
+                    Developed intelligent voice-activated receptionist with real-time speech processing and 
+                    natural language understanding using Node.js, Twilio, Google Cloud Speech, and Gemini API.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Node.js')}`}>Node.js</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Twilio')}`}>Twilio</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Google Cloud Speech')}`}>Google Cloud Speech</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Gemini API')}`}>Gemini API</span>
+                  </div>
+                </div>
+                
+                <div className="border-b border-gray-700 pb-12">
+                  <div className="flex items-center text-sm text-gray-400 mb-4">
+                    <span>AUGUST 2024 - PRESENT</span>
+                  </div>
+                  <h3 className="text-3xl font-light text-white mb-4">Medical AI Analysis Platform</h3>
+                  <p className="text-lg text-gray-300 leading-relaxed mb-6 max-w-4xl">
+                    Created AI system for automated bloodwork analysis, parsing medical documents and 
+                    generating structured health insights with Python and AI/ML APIs.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Python')}`}>Python</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('AI/ML APIs')}`}>AI/ML APIs</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Document Processing')}`}>Document Processing</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </section>
 
-          {/* Education Section */}
-          <section id="education" className="mb-16">
-            <h3 className="text-2xl font-semibold mb-6">Education</h3>
-            <div className="bg-slate-700 p-6 rounded-lg">
-              <h4 className="text-xl font-semibold mb-2">Bachelor of Science in Computer Science & Systems</h4>
-              <p className="text-blue-400 mb-2">University of Washington Tacoma | Graduated June 2022</p>
-              <p className="text-gray-200">
+            {/* Skills */}
+            <div>
+              <h3 className="text-2xl font-light text-white mb-8">Technical Skills</h3>
+              <div className="grid md:grid-cols-3 gap-12">
+                <div>
+                  <h4 className="font-medium mb-4 text-white">AI/ML Technologies</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('OpenAI API')}`}>OpenAI API</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Azure OpenAI')}`}>Azure OpenAI</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Google Gemini')}`}>Google Gemini</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('RAG')}`}>RAG</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Vector Search')}`}>Vector Search</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('MCP Protocol')}`}>MCP Protocol</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-4 text-white">Programming Languages</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Python')}`}>Python</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('JavaScript')}`}>JavaScript</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Node.js')}`}>Node.js</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Java')}`}>Java</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('SQL')}`}>SQL</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-4 text-white">Frameworks & Libraries</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('React')}`}>React</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Streamlit')}`}>Streamlit</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Express')}`}>Express</span>
+                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('jQuery')}`}>jQuery</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Education & Achievements Section - Full Page */}
+        <section id="education-achievements" className="min-h-screen flex items-center px-8">
+          <div className="max-w-6xl mx-auto w-full">
+            <div className="border-t border-gray-600 pt-8 mb-12">
+              <h2 className="text-sm font-medium text-gray-400 tracking-widest uppercase">EDUCATION & ACHIEVEMENTS</h2>
+            </div>
+            
+            {/* Education */}
+            <div className="mb-20 border-b border-gray-700 pb-16">
+              <div className="flex items-center text-sm text-gray-400 mb-4">
+                <span>GRADUATED JUNE 2022</span>
+                <div className="w-2 h-2 bg-green-500 rounded-full mx-4"></div>
+                <span>TACOMA, WA</span>
+              </div>
+              <h3 className="text-4xl font-light text-white mb-2">University of Washington Tacoma</h3>
+              <h4 className="text-xl text-gray-300 mb-8">Bachelor of Science in Computer Science & Systems</h4>
+              <p className="text-lg text-gray-300 leading-relaxed max-w-4xl">
                 Relevant Coursework: Algorithms, Artificial Intelligence, Advanced Software Engineering, 
                 Matrix Algebra, Data Structures, Computer Architecture, Probability & Statistics, Machine Learning Fundamentals
               </p>
             </div>
-          </section>
 
-          {/* Achievements Section */}
-          <section id="achievements" className="mb-16">
-            <h3 className="text-2xl font-semibold mb-6">Key Achievements</h3>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-slate-700 p-6 rounded-lg">
-                <ul className="space-y-3 text-gray-200">
-                  <li>• Production Scale: 4,000+ monthly active users on AI systems</li>
-                  <li>• Innovation Leadership: First in organization to implement MCP protocol</li>
-                  <li>• Early Adoption: Enterprise AI developer since August 2023</li>
-                </ul>
-              </div>
-              <div className="bg-slate-700 p-6 rounded-lg">
-                <ul className="space-y-3 text-gray-200">
-                  <li>• Career Acceleration: Promoted 1 year early due to AI copilot success</li>
-                  <li>• Cross-Functional Impact: Delivered AI solutions across multiple divisions</li>
-                  <li>• Technical Innovation: Pioneered agent-to-agent communication and dynamic UI generation</li>
-                </ul>
+            {/* Achievements */}
+            <div>
+              <h3 className="text-2xl font-light text-white mb-8">Key Achievements</h3>
+              <div className="grid md:grid-cols-2 gap-12">
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-lg font-medium text-white mb-2">Production Scale</h4>
+                    <p className="text-gray-300">4,000+ monthly active users on AI systems</p>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-medium text-white mb-2">Innovation Leadership</h4>
+                    <p className="text-gray-300">First in organization to implement MCP protocol</p>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-medium text-white mb-2">Early Adoption</h4>
+                    <p className="text-gray-300">Enterprise AI developer since August 2023</p>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-lg font-medium text-white mb-2">Career Acceleration</h4>
+                    <p className="text-gray-300">Promoted 1 year early due to AI copilot success</p>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-medium text-white mb-2">Cross-Functional Impact</h4>
+                    <p className="text-gray-300">Delivered AI solutions across multiple divisions</p>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-medium text-white mb-2">Technical Innovation</h4>
+                    <p className="text-gray-300">Pioneered agent-to-agent communication and dynamic UI generation</p>
+                  </div>
+                </div>
               </div>
             </div>
-          </section>
-        </div>
-        </motion.div>
+          </div>
+        </section>
+
+        {/* Contact/Footer Section - Full Page */}
+        <section id="contact" className="min-h-screen flex items-center px-8">
+          <div className="max-w-6xl mx-auto w-full">
+            <div className="border-t border-gray-600 pt-8 mb-12">
+              <h2 className="text-sm font-medium text-gray-400 tracking-widest uppercase">CONTACT</h2>
+            </div>
+            
+            <div className="mb-16">
+              <h3 className="text-6xl font-light text-white mb-8 leading-tight">HAVE AN<br />OPPORTUNITY?</h3>
+              <p className="text-xl text-gray-300 max-w-4xl leading-relaxed">
+                I'm open to new roles, freelance projects, and creative collaborations! If you have an idea you'd like to discuss, let's get in touch.
+              </p>
+            </div>
+            
+            <div className="mb-12">
+              <a href="mailto:inquiries@tonytle.dev" className="text-3xl text-white hover:text-gray-300 transition-colors duration-200">
+                inquiries@tonytle.dev
+              </a>
+            </div>
+            <div className="flex space-x-8">
+              <a 
+                href="https://github.com/Tole-Git" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors duration-200 flex items-center space-x-2"
+              >
+                <span>GitHub</span>
+              </a>
+              <a 
+                href="https://www.linkedin.com/in/letan87262910/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors duration-200 flex items-center space-x-2"
+              >
+                <span>LinkedIn</span>
+              </a>
+            </div>
+          </div>
+        </section>
       </div>
 
       {/* Sticky Chat Input - Only when chat is active */}
@@ -827,12 +951,12 @@ export default function Home() {
                     }
                   }}
                   placeholder="Ask me anything..."
-                  className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:border-white/40"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading || isAnimating}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
                 >
                   <ArrowUp size={20} />
                 </button>
@@ -850,7 +974,7 @@ export default function Home() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0 }}
             onClick={scrollToTop}
-            className={`fixed z-50 p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-colors duration-200 ${
+            className={`fixed z-50 p-4 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg transition-colors duration-200 ${
               chatAtBottom ? 'bottom-24 right-8' : 'bottom-8 right-8'
             }`}
           >

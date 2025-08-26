@@ -5,30 +5,21 @@
   background-image: radial-gradient(var(--tw-gradient-stops));
 }
 
-/* Specific radial gradient classes */
-.radial-blue-purple {
-  background: radial-gradient(circle at center, rgba(37, 99, 235, 0.15) 0%, rgba(147, 51, 234, 0.08) 50%, transparent 100%);
+/* Specific radial gradient classes - Updated for white/black/gray/red theme */
+.radial-red-accent {
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.1) 0%, rgba(156, 163, 175, 0.05) 50%, transparent 100%);
 }
 
-.radial-cyan-blue {
-  background: radial-gradient(circle at -100% 20%, rgba(6, 182, 212, 0.2) 0%, rgba(59, 130, 246, 0.1) 50%, transparent 100%);
+.radial-gray-subtle {
+  background: radial-gradient(circle at -100% 20%, rgba(156, 163, 175, 0.08) 0%, rgba(107, 114, 128, 0.04) 50%, transparent 100%);
 }
 
-.radial-purple-pink {
-  background: radial-gradient(circle at center, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.08) 50%, transparent 100%);
+.radial-black-accent {
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.15) 0%, rgba(55, 65, 81, 0.08) 50%, transparent 100%);
 }
 
-.radial-indigo-blue {
-  background: radial-gradient(circle at -100% 20%, rgba(99, 102, 241, 0.12) 0%, rgba(37, 99, 235, 0.06) 50%, transparent 100%);
-}
-
-.radial-purple {
-  background: radial-gradient(circle at center, rgba(168, 85, 247, 0.15) 0%, rgba(126, 34, 206, 0.08) 50%, transparent 100%);
-}
-
-/* Test gradient - much more visible */
-.test-gradient {
-  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.8) 0%, rgba(147, 51, 234, 0.4) 50%, rgba(236, 72, 153, 0.2) 80%, transparent 100%);
+.radial-minimal {
+  background: radial-gradient(circle at -100% 20%, rgba(17, 24, 39, 0.12) 0%, rgba(31, 41, 55, 0.06) 50%, transparent 100%);
 }
 
 /* Custom markdown styles for react-markdown */
@@ -129,8 +120,12 @@
 
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #ffffff;
+  --accent-red: #ef4444;
+  --gray-light: #f3f4f6;
+  --gray-medium: #6b7280;
+  --gray-dark: #374151;
 }
 
 @theme inline {
@@ -140,11 +135,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --font-geist-sans: "GeistSans","GeistSans Fallback"
+    --background: #ffffff;
+    --foreground: #000000;
   }
 }
 
@@ -177,4 +171,61 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Neon Tag Colors - Transparent with colored borders */
+.tag-neon-emerald {
+  background: transparent;
+  border: 1px solid #10b981;
+  color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+
+.tag-neon-purple {
+  background: transparent;
+  border: 1px solid #8b5cf6;
+  color: #8b5cf6;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.2);
+}
+
+.tag-neon-blue {
+  background: transparent;
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+}
+
+.tag-neon-amber {
+  background: transparent;
+  border: 1px solid #f59e0b;
+  color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+}
+
+.tag-neon-cyan {
+  background: transparent;
+  border: 1px solid #06b6d4;
+  color: #06b6d4;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
+}
+
+.tag-neon-lime {
+  background: transparent;
+  border: 1px solid #84cc16;
+  color: #84cc16;
+  box-shadow: 0 0 8px rgba(132, 204, 22, 0.2);
+}
+
+.tag-neon-red {
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+}
+
+.tag-neon-indigo {
+  background: transparent;
+  border: 1px solid #6366f1;
+  color: #6366f1;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
 }
