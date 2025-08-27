@@ -384,7 +384,7 @@ export default function Home() {
                 setAuthError(''); // Clear error when typing
               }}
               placeholder="Password"
-              className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:border-white/40"
               disabled={isAuthenticating}
               autoComplete="current-password"
               maxLength={50}
