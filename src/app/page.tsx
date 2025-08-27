@@ -61,9 +61,15 @@ export default function Home() {
   const [chatAtBottom, setChatAtBottom] = useState(false);
   const [messagesVisible, setMessagesVisible] = useState(false);
   
+  // Mobile keyboard states
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [scrollPositionBeforeKeyboard, setScrollPositionBeforeKeyboard] = useState(0);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aboutMeRef = useRef<HTMLDivElement>(null);
   const miniMessagesEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -79,6 +85,52 @@ export default function Home() {
 
     return () => clearInterval(sessionCheckInterval);
   }, [isAuthenticated]);
+
+  // Mobile keyboard detection and viewport handling
+  useEffect(() => {
+    if (!isClient) return;
+
+    const initialViewportHeight = window.visualViewport?.height || window.innerHeight;
+    setViewportHeight(initialViewportHeight);
+
+    const handleViewportChange = () => {
+      const currentHeight = window.visualViewport?.height || window.innerHeight;
+      const heightDifference = initialViewportHeight - currentHeight;
+      
+      // Keyboard is considered open if viewport height decreased by more than 150px
+      const keyboardOpen = heightDifference > 150;
+      
+      if (keyboardOpen && !isKeyboardOpen) {
+        // Keyboard just opened - save current scroll position
+        setScrollPositionBeforeKeyboard(window.scrollY);
+        setIsKeyboardOpen(true);
+      } else if (!keyboardOpen && isKeyboardOpen) {
+        // Keyboard just closed - restore scroll position with a slight delay
+        setIsKeyboardOpen(false);
+        setTimeout(() => {
+          window.scrollTo({ top: scrollPositionBeforeKeyboard, behavior: 'instant' });
+        }, 100);
+      }
+      
+      setViewportHeight(currentHeight);
+    };
+
+    // Add event listeners for both visual viewport and window resize
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+      window.visualViewport.addEventListener('scroll', handleViewportChange);
+    }
+    
+    window.addEventListener('resize', handleViewportChange);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+        window.visualViewport.removeEventListener('scroll', handleViewportChange);
+      }
+      window.removeEventListener('resize', handleViewportChange);
+    };
+  }, [isClient, isKeyboardOpen, scrollPositionBeforeKeyboard]);
 
   // Check if user is already authenticated
   const checkAuthStatus = async () => {
@@ -581,7 +633,21 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className={`overflow-y-auto space-y-4 ${chatAtBottom ? 'flex-1 h-full px-8 pt-20 pb-4' : 'max-h-96 mb-6 px-4'}`}
+                className={`overflow-y-auto space-y-4 ${
+                  chatAtBottom 
+                    ? `flex-1 h-full px-8 pt-20 ${
+                        isKeyboardOpen 
+                          ? 'pb-24' // Extra padding when keyboard is open
+                          : 'pb-4' 
+                      }` 
+                    : 'max-h-96 mb-6 px-4'
+                }`}
+                style={{
+                  // Adjust height when keyboard is open to ensure messages remain visible
+                  maxHeight: isKeyboardOpen && chatAtBottom 
+                    ? `${viewportHeight - 200}px` // Account for header, input, and padding
+                    : undefined
+                }}
                 data-chat-container
               >
                 {messages.map((message) => (
@@ -644,7 +710,7 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading || isAnimating}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
               >
                 <ArrowUp size={20} />
               </button>
@@ -933,7 +999,17 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-t border-white/10 p-4"
+            className={`fixed left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-t border-white/10 p-4 ${
+              isKeyboardOpen 
+                ? 'bottom-0' // When keyboard is open, position at true bottom
+                : 'bottom-0' // When keyboard is closed, position at screen bottom
+            }`}
+            style={{
+              // Use viewport height when keyboard is open to ensure visibility
+              bottom: isKeyboardOpen ? '0px' : '0px',
+              // Ensure the input stays above the keyboard
+              transform: isKeyboardOpen ? 'translateY(0)' : 'translateY(0)'
+            }}
           >
             <div className="max-w-4xl mx-auto">
               <form onSubmit={(e) => {
@@ -942,6 +1018,7 @@ export default function Home() {
                 handleSubmit(e);
               }} className="relative">
                 <input
+                  ref={chatInputRef}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -950,13 +1027,27 @@ export default function Home() {
                       e.preventDefault();
                     }
                   }}
+                  onFocus={() => {
+                    // On mobile, when input is focused and keyboard opens,
+                    // scroll to make input visible
+                    if (window.innerWidth <= 768) {
+                      setTimeout(() => {
+                        if (chatInputRef.current) {
+                          chatInputRef.current.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                          });
+                        }
+                      }, 300);
+                    }
+                  }}
                   placeholder="Ask me anything..."
                   className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:border-white/40"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading || isAnimating}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
                 >
                   <ArrowUp size={20} />
                 </button>
@@ -974,7 +1065,7 @@ export default function Home() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0 }}
             onClick={scrollToTop}
-            className={`fixed z-50 p-4 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg transition-colors duration-200 ${
+            className={`fixed z-50 p-4 bg-gray-600 hover:bg-gray-700 text-white rounded-full shadow-lg transition-colors duration-200 ${
               chatAtBottom ? 'bottom-24 right-8' : 'bottom-8 right-8'
             }`}
           >

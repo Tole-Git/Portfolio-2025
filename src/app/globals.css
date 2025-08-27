@@ -229,3 +229,60 @@ body {
   color: #6366f1;
   box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
 }
+
+/* Mobile viewport and keyboard handling */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+}
+
+/* Mobile-specific improvements */
+@media screen and (max-width: 768px) {
+  /* Prevent zoom on input focus */
+  input[type="text"],
+  input[type="password"] {
+    font-size: 16px;
+  }
+  
+  /* Handle keyboard overlay on mobile */
+  .mobile-chat-container {
+    height: calc(100vh - env(keyboard-inset-height, 0px));
+    height: calc(100dvh - env(keyboard-inset-height, 0px));
+  }
+  
+  /* Prevent body scroll when keyboard is open */
+  .keyboard-open {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  /* Smooth transitions for mobile viewport changes */
+  .mobile-viewport-transition {
+    transition: height 0.3s ease-in-out;
+  }
+}
+
+/* iOS-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* iOS keyboard handling */
+  .ios-keyboard-fix {
+    padding-bottom: env(keyboard-inset-height, 0px);
+  }
+}
+
+/* Visual Viewport API support */
+@media screen and (max-width: 768px) {
+  .chat-input-mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    /* Use viewport height when keyboard is present */
+    bottom: env(keyboard-inset-height, 0px);
+    transform: translateY(0);
+  }
+}
