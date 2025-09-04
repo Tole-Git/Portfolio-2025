@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, ChevronDown, ArrowUp, MessageSquare, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, ArrowUp, MessageSquare, X, Menu } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -54,6 +54,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [showMiniHeader, setShowMiniHeader] = useState(false);
   const [isMiniHeaderExpanded, setIsMiniHeaderExpanded] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Animation sequence states
   const [isAnimating, setIsAnimating] = useState(false);
@@ -229,11 +230,16 @@ export default function Home() {
       
       // Show mini header when scrolled down and there are messages
       setShowMiniHeader(currentScrollY > window.innerHeight / 2 && messages.length > 0);
+      
+      // Close mobile menu when scrolling
+      if (isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [messages.length]);
+  }, [messages.length, isMobileMenuOpen]);
 
   useEffect(() => {
     // messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -366,18 +372,29 @@ export default function Home() {
   };
 
   const scrollToSection = (sectionId: string) => {
+    console.log('Scrolling to section:', sectionId); // Debug log
     const element = document.getElementById(sectionId);
+    console.log('Found element:', element); // Debug log
+    
     if (element) {
       // Get the actual header height dynamically
       const header = document.querySelector('header');
+      const headerHeight = header ? header.offsetHeight : 48; // Default to 48px (h-12)
       
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-      const targetPosition = elementPosition;
+      const targetPosition = elementPosition - headerHeight - 20; // 20px extra padding
+      
+      console.log('Scrolling to position:', targetPosition); // Debug log
       
       window.scrollTo({
         top: Math.max(0, targetPosition),
         behavior: 'smooth'
       });
+      
+      // Close mobile menu if open
+      setIsMobileMenuOpen(false);
+    } else {
+      console.error('Section not found:', sectionId); // Debug log
     }
   };
 
@@ -462,32 +479,99 @@ export default function Home() {
         {/* Gray depth layer */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-minimal rounded-full blur-3xl"></div>
       </div>
-      {/* Sticky Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black" data-element="main-header" title="Main Navigation Header">
-        <nav className="flex justify-between items-center py-2 px-2 sm:px-4" data-element="main-nav">
-          <div className="flex justify-center flex-1 space-x-1 sm:space-x-2 md:space-x-4 lg:space-x-6">
-            {categories.map((category) => (
+      {/* Microsoft-Style Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/5 backdrop-blur-md border-b border-white/5" data-element="main-header" title="Main Navigation Header">
+        <nav className="w-full px-6" data-element="main-nav">
+          <div className="flex items-center h-12">
+            {/* Desktop Navigation - Left aligned like Microsoft */}
+            <div className="hidden md:flex items-center space-x-0">
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => scrollToSection(category.id)}
+                  className="text-white/90 hover:text-white hover:bg-white/10 px-4 py-2 text-sm font-normal transition-all duration-150 relative group"
+                  data-element="nav-button"
+                  data-section={category.id}
+                  title={`Navigate to ${category.title} section`}
+                >
+                  {category.title}
+                  <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-white scale-x-0 group-hover:scale-x-100 transition-transform duration-150"></div>
+                </button>
+              ))}
+            </div>
+
+            {/* Spacer to push logout to right */}
+            <div className="flex-1"></div>
+
+            {/* Desktop Logout - Right aligned */}
+            <div className="hidden md:block">
               <button
-                key={category.id}
-                onClick={() => scrollToSection(category.id)}
-                className="text-white hover:text-gray-300 transition-colors duration-200 text-[10px] xs:text-xs sm:text-sm font-medium whitespace-nowrap px-2 py-1 bg-black rounded"
-                data-element="nav-button"
-                data-section={category.id}
-                title={`Navigate to ${category.title} section`}
+                onClick={handleLogout}
+                className="text-white/70 hover:text-white hover:bg-white/10 px-3 py-1.5 text-sm font-normal flex items-center space-x-1.5 transition-all duration-150 rounded-sm"
+                title="Logout from portfolio"
+                data-element="logout-button"
               >
-                {category.title}
+                <X size={14} />
+                <span>Sign out</span>
               </button>
-            ))}
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden w-full flex justify-between items-center">
+              <div></div> {/* Empty div for spacing */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="text-white/90 hover:text-white hover:bg-white/10 p-2 transition-all duration-150 rounded-sm"
+                data-element="mobile-menu-toggle"
+                title={`${isMobileMenuOpen ? 'Close' : 'Open'} navigation menu`}
+              >
+                {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-gray-400 hover:text-white transition-colors duration-200 text-[10px] xs:text-xs sm:text-sm font-medium flex items-center space-x-1 px-1 sm:px-2 ml-1"
-            title="Logout from portfolio"
-            data-element="logout-button"
-          >
-            <X size={14} className="sm:w-4 sm:h-4" />
-            <span className="hidden xs:inline">Logout</span>
-          </button>
+
+          {/* Mobile Navigation Menu */}
+          <AnimatePresence>
+            {isMobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="md:hidden border-t border-white/10 bg-white/5 backdrop-blur-md"
+                data-element="mobile-menu"
+              >
+                <div className="py-3 space-y-1">
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => scrollToSection(category.id)}
+                      className="text-white/90 hover:text-white hover:bg-white/10 block w-full text-left px-4 py-3 text-sm font-normal transition-all duration-150"
+                      data-element="mobile-nav-button"
+                      data-section={category.id}
+                      title={`Navigate to ${category.title} section`}
+                    >
+                      {category.title}
+                    </button>
+                  ))}
+                  <div className="border-t border-white/10 pt-3 mt-3">
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="text-white/70 hover:text-white hover:bg-white/10 block w-full text-left px-4 py-3 text-sm font-normal flex items-center space-x-2 transition-all duration-150"
+                      data-element="mobile-logout-button"
+                      title="Logout from portfolio"
+                    >
+                      <X size={14} />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </nav>
       </header>
 
@@ -499,7 +583,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -100 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed top-9 left-0 right-0 z-40 bg-transparent border-white/10"
+            className="fixed top-12 left-0 right-0 z-40 bg-white/5 backdrop-blur-md border-b border-white/5"
             data-element="mini-chat-header"
             title="Mini Chat Messages"
           >
@@ -741,7 +825,7 @@ export default function Home() {
       <div 
         className="relative z-10"
         style={{ 
-          marginTop: showMiniHeader ? (isMiniHeaderExpanded ? '20vh' : '3rem') : '0px'
+          marginTop: showMiniHeader ? (isMiniHeaderExpanded ? 'calc(20vh + 3rem)' : '6rem') : '3rem'
         }}
       >
         {/* Summary Section - Full Page */}
