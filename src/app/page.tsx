@@ -463,14 +463,17 @@ export default function Home() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-minimal rounded-full blur-3xl"></div>
       </div>
       {/* Sticky Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-b border-white/10">
-        <nav className="flex justify-between items-center py-2 px-2 sm:px-4">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black" data-element="main-header" title="Main Navigation Header">
+        <nav className="flex justify-between items-center py-2 px-2 sm:px-4" data-element="main-nav">
           <div className="flex justify-center flex-1 space-x-1 sm:space-x-2 md:space-x-4 lg:space-x-6">
             {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => scrollToSection(category.id)}
-                className="text-white hover:text-gray-300 transition-colors duration-200 text-[10px] xs:text-xs sm:text-sm font-medium whitespace-nowrap px-0.5 xs:px-1 sm:px-2"
+                className="text-white hover:text-gray-300 transition-colors duration-200 text-[10px] xs:text-xs sm:text-sm font-medium whitespace-nowrap px-2 py-1 bg-black rounded"
+                data-element="nav-button"
+                data-section={category.id}
+                title={`Navigate to ${category.title} section`}
               >
                 {category.title}
               </button>
@@ -479,7 +482,8 @@ export default function Home() {
           <button
             onClick={handleLogout}
             className="text-gray-400 hover:text-white transition-colors duration-200 text-[10px] xs:text-xs sm:text-sm font-medium flex items-center space-x-1 px-1 sm:px-2 ml-1"
-            title="Logout"
+            title="Logout from portfolio"
+            data-element="logout-button"
           >
             <X size={14} className="sm:w-4 sm:h-4" />
             <span className="hidden xs:inline">Logout</span>
@@ -495,13 +499,15 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -100 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed top-9 left-0 right-0 z-40 bg-black/20 backdrop-blur-md border-b border-white/10"
+            className="fixed top-9 left-0 right-0 z-40 bg-transparent border-white/10"
+            data-element="mini-chat-header"
+            title="Mini Chat Messages"
           >
             <div className={`transition-all duration-300 ease-in-out ${
               isMiniHeaderExpanded ? 'h-[20vh]' : 'h-12'
             }`}>
               {/* Mini Header Controls */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+              <div className="flex items-center justify-between px-4 py-2 border-white/10">
                 <div className="flex items-center space-x-2">
                   <MessageSquare size={16} className="text-gray-300" />
                   <span className="text-sm text-gray-300">Chat Messages</span>
@@ -510,6 +516,8 @@ export default function Home() {
                 <button
                   onClick={() => setIsMiniHeaderExpanded(!isMiniHeaderExpanded)}
                   className="p-1 hover:bg-white/10 rounded transition-colors duration-200"
+                  data-element="mini-chat-toggle"
+                  title={`${isMiniHeaderExpanded ? 'Collapse' : 'Expand'} mini chat`}
                 >
                   {isMiniHeaderExpanded ? (
                     <ChevronUp size={16} className="text-gray-300" />
@@ -521,15 +529,18 @@ export default function Home() {
 
               {/* Mini Messages Container */}
               {isMiniHeaderExpanded && (
-                <div className="h-[calc(20vh-3rem)] overflow-y-auto px-4 py-2 space-y-2">
+                <div className="h-[calc(20vh-3rem)] overflow-y-auto px-4 py-2 space-y-2" data-element="mini-chat-messages" title="Mini Chat Messages Container">
                   {messages.map((message) => (
                     <div
                       key={message.id}
                       className={`text-xs ${
                         message.role === 'user'
                           ? 'p-2 rounded-lg bg-gray-700/50 border border-white/30 ml-auto max-w-[60%] min-w-[20%] w-fit shadow-md shadow-white/10'
-                          : 'p-2 rounded-lg mr-auto max-w-screen'
+                          : 'p-2 rounded-lg mr-auto max-w-screen bg-black'
                       }`}
+                      data-element={`mini-message-${message.role}`}
+                      data-message-id={message.id}
+                      title={`${message.role === 'user' ? 'User' : 'AI'} message in mini chat`}
                     >
                       {message.role === 'user' ? (
                         <p className="text-white whitespace-pre-wrap break-words">{message.content}</p>
@@ -660,6 +671,9 @@ export default function Home() {
                         ? 'bg-gray-700/50 border border-white/30 ml-auto max-w-xs w-fit min-w-[20%] shadow-lg shadow-white/10'
                         : 'mr-auto max-w-screen'
                     }`}
+                    data-element={`main-message-${message.role}`}
+                    data-message-id={message.id}
+                    title={`${message.role === 'user' ? 'User' : 'AI'} message in main chat`}
                   >
                     {message.role === 'user' ? (
                       <p className="text-white whitespace-pre-wrap">{message.content}</p>
@@ -705,12 +719,16 @@ export default function Home() {
                   }
                 }}
                 placeholder="Ask me anything..."
-                className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:border-white/40"
+                className="w-full px-6 py-4 bg-white/10 border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:border-white/40"
+                data-element="chat-input-center"
+                title="Chat input - center of page"
               />
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading || isAnimating}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
+                data-element="chat-submit-center"
+                title="Send message - center chat"
               >
                 <ArrowUp size={20} />
               </button>
@@ -999,11 +1017,13 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className={`fixed left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-t border-white/10 p-4 ${
+            className={`fixed left-0 right-0 z-50 bg-transparent border-t border-white/10 p-4 ${
               isKeyboardOpen 
                 ? 'bottom-0' // When keyboard is open, position at true bottom
                 : 'bottom-0' // When keyboard is closed, position at screen bottom
             }`}
+            data-element="sticky-chat-footer"
+            title="Sticky Chat Input Footer"
             style={{
               // Use viewport height when keyboard is open to ensure visibility
               bottom: isKeyboardOpen ? '0px' : '0px',
@@ -1042,12 +1062,16 @@ export default function Home() {
                     }
                   }}
                   placeholder="Ask me anything..."
-                  className="w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:border-white/40"
+                  className="w-full px-6 py-4 bg-white/10 border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:border-white/40"
+                  data-element="chat-input-sticky"
+                  title="Chat input - sticky footer"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading || isAnimating}
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
+                  data-element="chat-submit-sticky"
+                  title="Send message - sticky footer"
                 >
                   <ArrowUp size={20} />
                 </button>
@@ -1068,6 +1092,8 @@ export default function Home() {
             className={`fixed z-50 p-4 bg-gray-600 hover:bg-gray-700 text-white rounded-full shadow-lg transition-colors duration-200 ${
               chatAtBottom ? 'bottom-24 right-8' : 'bottom-8 right-8'
             }`}
+            data-element="scroll-to-top"
+            title="Scroll to top of page"
           >
             <ChevronUp size={24} />
           </motion.button>
