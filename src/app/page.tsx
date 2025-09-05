@@ -372,29 +372,49 @@ export default function Home() {
   };
 
   const scrollToSection = (sectionId: string) => {
-    console.log('Scrolling to section:', sectionId); // Debug log
     const element = document.getElementById(sectionId);
-    console.log('Found element:', element); // Debug log
     
     if (element) {
-      // Get the actual header height dynamically
-      const header = document.querySelector('header');
-      const headerHeight = header ? header.offsetHeight : 48; // Default to 48px (h-12)
-      
-      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-      const targetPosition = elementPosition - headerHeight - 20; // 20px extra padding
-      
-      console.log('Scrolling to position:', targetPosition); // Debug log
-      
-      window.scrollTo({
-        top: Math.max(0, targetPosition),
-        behavior: 'smooth'
-      });
-      
-      // Close mobile menu if open
+      // Close mobile menu first
       setIsMobileMenuOpen(false);
+      
+      // Small delay to let menu close
+      setTimeout(() => {
+        // Get viewport and header dimensions
+        const header = document.querySelector('header');
+        const headerHeight = header ? header.offsetHeight : 48;
+        const viewportHeight = window.innerHeight;
+        
+        // Get element position
+        const elementRect = element.getBoundingClientRect();
+        const elementTop = elementRect.top + window.pageYOffset;
+        const elementHeight = elementRect.height;
+        
+        // Calculate position to center the section in viewport
+        // Center = elementTop - (viewportHeight / 2) + (elementHeight / 2) + headerHeight
+        const centerPosition = elementTop - (viewportHeight / 2) + (elementHeight / 2) + (headerHeight / 2);
+        const targetPosition = Math.max(0, centerPosition);
+      
+        // Smooth scroll with proper CSS support
+        document.documentElement.style.scrollBehavior = 'smooth';
+        
+        // Use requestAnimationFrame for smoother scrolling
+        requestAnimationFrame(() => {
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          });
+          
+          // Reset scroll behavior after animation
+          setTimeout(() => {
+            document.documentElement.style.scrollBehavior = 'auto';
+          }, 1000);
+        });
+        
+      }, 150); // Slightly longer delay for menu animation
+      
     } else {
-      console.error('Section not found:', sectionId); // Debug log
+      console.error('Section not found:', sectionId);
     }
   };
 
