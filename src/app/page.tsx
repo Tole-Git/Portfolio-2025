@@ -2,40 +2,19 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, ChevronDown, ArrowUp, MessageSquare, X, Menu } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { ChevronUp } from 'lucide-react';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-const categories = [
-  { id: 'summary', title: 'Summary' },
-  { id: 'experience', title: 'Experience' },
-  { id: 'projects-skills', title: 'Projects & Skills' },
-  { id: 'education-achievements', title: 'Education & Achievements' },
-  { id: 'contact', title: 'Contact' }
-];
-
-// Neon color classes for tags
-const neonColors = [
-  'tag-neon-emerald',
-  'tag-neon-purple', 
-  'tag-neon-blue',
-  'tag-neon-amber',
-  'tag-neon-cyan',
-  'tag-neon-lime',
-  'tag-neon-red',
-  'tag-neon-indigo'
-];
-
-// Function to get consistent color for a tag based on its text
-const getTagColor = (tagText: string): string => {
-  const index = tagText.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % neonColors.length;
-  return neonColors[index];
-};
+import { Message, categories } from '@/components/shared/types';
+import MainHeader from '@/components/layout/MainHeader';
+import MiniChatHeader from '@/components/chat/MiniChatHeader';
+import MessageList from '@/components/chat/MessageList';
+import CenterChatInput from '@/components/chat/CenterChatInput';
+import StickyChatInput from '@/components/chat/StickyChatInput';
+import Summary from '@/components/sections/Summary';
+import Experience from '@/components/sections/Experience';
+import ProjectsSkills from '@/components/sections/ProjectsSkills';
+import EducationAchievements from '@/components/sections/EducationAchievements';
+import Contact from '@/components/sections/Contact';
 
 export default function Home() {
   // Authentication states
@@ -44,7 +23,6 @@ export default function Home() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
-  
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +33,10 @@ export default function Home() {
   const [showMiniHeader, setShowMiniHeader] = useState(false);
   const [isMiniHeaderExpanded, setIsMiniHeaderExpanded] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>('');
+  const [navSearch, setNavSearch] = useState('');
+  
+  
   
   // Animation sequence states
   const [isAnimating, setIsAnimating] = useState(false);
@@ -251,6 +233,57 @@ export default function Home() {
       miniMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, showMiniHeader, isMiniHeaderExpanded]);
+
+  // Auto sign-out 1 hour after login
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const logoutTimer = setTimeout(() => {
+      handleLogout();
+    }, 60 * 60 * 1000);
+    return () => clearTimeout(logoutTimer);
+  }, [isAuthenticated]);
+
+  // Track active section based on scroll position
+  useEffect(() => {
+    if (!isClient) return;
+
+    const sections = categories
+      .map(c => document.getElementById(c.id))
+      .filter(Boolean) as HTMLElement[];
+
+    if (!sections.length) return;
+
+    const computeActive = () => {
+      const scrollTop = window.scrollY;
+      const probeY = scrollTop + window.innerHeight * 0.35; // consider a point above viewport center
+
+      // No highlight when above the first section (chat area)
+      const firstTop = sections[0]?.offsetTop ?? 0;
+      if (scrollTop + 1 < firstTop - 10) {
+        if (activeSection !== '') setActiveSection('');
+        return;
+      }
+
+      let current: string = '';
+      for (const el of sections) {
+        const top = el.offsetTop;
+        const bottom = top + el.offsetHeight;
+        if (probeY >= top && probeY < bottom) {
+          current = el.id;
+          break;
+        }
+      }
+      if (current !== activeSection) setActiveSection(current);
+    };
+
+    computeActive();
+    window.addEventListener('scroll', computeActive, { passive: true });
+    window.addEventListener('resize', computeActive);
+    return () => {
+      window.removeEventListener('scroll', computeActive);
+      window.removeEventListener('resize', computeActive);
+    };
+  }, [isClient, activeSection]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -499,178 +532,25 @@ export default function Home() {
         {/* Gray depth layer */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radial-minimal rounded-full blur-3xl"></div>
       </div>
-      {/* Microsoft-Style Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/5 backdrop-blur-md border-b border-white/5" data-element="main-header" title="Main Navigation Header">
-        <nav className="w-full px-6" data-element="main-nav">
-          <div className="flex items-center h-12">
-            {/* Desktop Navigation - Left aligned like Microsoft */}
-            <div className="hidden md:flex items-center space-x-0">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => scrollToSection(category.id)}
-                  className="text-white/90 hover:text-white hover:bg-white/10 px-4 py-2 text-sm font-normal transition-all duration-150 relative group"
-                  data-element="nav-button"
-                  data-section={category.id}
-                  title={`Navigate to ${category.title} section`}
-                >
-                  {category.title}
-                  <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-white scale-x-0 group-hover:scale-x-100 transition-transform duration-150"></div>
-                </button>
-              ))}
-            </div>
+      <MainHeader
+        categories={categories}
+        activeSection={activeSection}
+        navSearch={navSearch}
+        setNavSearch={setNavSearch}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+        scrollToSection={scrollToSection}
+        scrollToTop={scrollToTop}
+      />
 
-            {/* Spacer to push logout to right */}
-            <div className="flex-1"></div>
-
-            {/* Desktop Logout - Right aligned */}
-            <div className="hidden md:block">
-              <button
-                onClick={handleLogout}
-                className="text-white/70 hover:text-white hover:bg-white/10 px-3 py-1.5 text-sm font-normal flex items-center space-x-1.5 transition-all duration-150 rounded-sm"
-                title="Logout from portfolio"
-                data-element="logout-button"
-              >
-                <X size={14} />
-                <span>Sign out</span>
-              </button>
-            </div>
-
-            {/* Mobile menu button */}
-            <div className="md:hidden w-full flex justify-between items-center">
-              <div></div> {/* Empty div for spacing */}
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="text-white/90 hover:text-white hover:bg-white/10 p-2 transition-all duration-150 rounded-sm"
-                data-element="mobile-menu-toggle"
-                title={`${isMobileMenuOpen ? 'Close' : 'Open'} navigation menu`}
-              >
-                {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Navigation Menu */}
-          <AnimatePresence>
-            {isMobileMenuOpen && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-                className="md:hidden border-t border-white/10 bg-white/5 backdrop-blur-md"
-                data-element="mobile-menu"
-              >
-                <div className="py-3 space-y-1">
-                  {categories.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => scrollToSection(category.id)}
-                      className="text-white/90 hover:text-white hover:bg-white/10 block w-full text-left px-4 py-3 text-sm font-normal transition-all duration-150"
-                      data-element="mobile-nav-button"
-                      data-section={category.id}
-                      title={`Navigate to ${category.title} section`}
-                    >
-                      {category.title}
-                    </button>
-                  ))}
-                  <div className="border-t border-white/10 pt-3 mt-3">
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="text-white/70 hover:text-white hover:bg-white/10 block w-full text-left px-4 py-3 text-sm font-normal flex items-center space-x-2 transition-all duration-150"
-                      data-element="mobile-logout-button"
-                      title="Logout from portfolio"
-                    >
-                      <X size={14} />
-                      <span>Sign out</span>
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </nav>
-      </header>
-
-      {/* Mini Header Messages */}
-      <AnimatePresence>
-        {showMiniHeader && (
-          <motion.div
-            initial={{ opacity: 0, y: -100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -100 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed top-12 left-0 right-0 z-40 bg-white/5 backdrop-blur-md border-b border-white/5"
-            data-element="mini-chat-header"
-            title="Mini Chat Messages"
-          >
-            <div className={`transition-all duration-300 ease-in-out ${
-              isMiniHeaderExpanded ? 'h-[20vh]' : 'h-12'
-            }`}>
-              {/* Mini Header Controls */}
-              <div className="flex items-center justify-between px-4 py-2 border-white/10">
-                <div className="flex items-center space-x-2">
-                  <MessageSquare size={16} className="text-gray-300" />
-                  <span className="text-sm text-gray-300">Chat Messages</span>
-                  <span className="text-xs text-gray-400">({messages.length})</span>
-                </div>
-                <button
-                  onClick={() => setIsMiniHeaderExpanded(!isMiniHeaderExpanded)}
-                  className="p-1 hover:bg-white/10 rounded transition-colors duration-200"
-                  data-element="mini-chat-toggle"
-                  title={`${isMiniHeaderExpanded ? 'Collapse' : 'Expand'} mini chat`}
-                >
-                  {isMiniHeaderExpanded ? (
-                    <ChevronUp size={16} className="text-gray-300" />
-                  ) : (
-                    <ChevronDown size={16} className="text-gray-300" />
-                  )}
-                </button>
-              </div>
-
-              {/* Mini Messages Container */}
-              {isMiniHeaderExpanded && (
-                <div className="h-[calc(20vh-3rem)] overflow-y-auto px-4 py-2 space-y-2" data-element="mini-chat-messages" title="Mini Chat Messages Container">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`text-xs ${
-                        message.role === 'user'
-                          ? 'p-2 rounded-lg bg-gray-700/50 border border-white/30 ml-auto max-w-[60%] min-w-[20%] w-fit shadow-md shadow-white/10'
-                          : 'p-2 rounded-lg mr-auto max-w-screen bg-black'
-                      }`}
-                      data-element={`mini-message-${message.role}`}
-                      data-message-id={message.id}
-                      title={`${message.role === 'user' ? 'User' : 'AI'} message in mini chat`}
-                    >
-                      {message.role === 'user' ? (
-                        <p className="text-white whitespace-pre-wrap break-words">{message.content}</p>
-                      ) : (
-                        <div className="text-gray-100 prose prose-xs prose-invert max-w-none">
-                          <ReactMarkdown>{message.content}</ReactMarkdown>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="bg-gray-700/80 p-2 rounded-lg mr-auto w-fit">
-                      <div className="flex space-x-1">
-                        <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
-                        <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={miniMessagesEndRef} />
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <MiniChatHeader
+        visible={showMiniHeader}
+        isMiniHeaderExpanded={isMiniHeaderExpanded}
+        setIsMiniHeaderExpanded={setIsMiniHeaderExpanded}
+        messages={messages}
+        isLoading={isLoading}
+        miniMessagesEndRef={miniMessagesEndRef}
+      />
 
       {/* Homepage Title and Chat */}
       <div className={`min-h-screen flex flex-col items-center transition-all duration-800 ease-in-out relative z-10 ${
@@ -740,103 +620,27 @@ export default function Home() {
           }}
           data-chat-interface
         >
-          {/* Chat Messages */}
           <AnimatePresence>
             {showChat && messages.length > 0 && messagesVisible && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-                className={`overflow-y-auto space-y-4 ${
-                  chatAtBottom 
-                    ? `flex-1 h-full px-8 pt-20 ${
-                        isKeyboardOpen 
-                          ? 'pb-24' // Extra padding when keyboard is open
-                          : 'pb-4' 
-                      }` 
-                    : 'max-h-96 mb-6 px-4'
-                }`}
-                style={{
-                  // Adjust height when keyboard is open to ensure messages remain visible
-                  maxHeight: isKeyboardOpen && chatAtBottom 
-                    ? `${viewportHeight - 200}px` // Account for header, input, and padding
-                    : undefined
-                }}
-                data-chat-container
-              >
-                {messages.map((message) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`p-4 rounded-2xl ${
-                      message.role === 'user'
-                        ? 'bg-gray-700/50 border border-white/30 ml-auto max-w-xs w-fit min-w-[20%] shadow-lg shadow-white/10'
-                        : 'mr-auto max-w-screen'
-                    }`}
-                    data-element={`main-message-${message.role}`}
-                    data-message-id={message.id}
-                    title={`${message.role === 'user' ? 'User' : 'AI'} message in main chat`}
-                  >
-                    {message.role === 'user' ? (
-                      <p className="text-white whitespace-pre-wrap">{message.content}</p>
-                    ) : (
-                      <div className="markdown-content">
-                        <ReactMarkdown>{message.content}</ReactMarkdown>
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-                {isLoading && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="bg-gray-700 p-4 rounded-2xl mr-auto w-fit"
-                  >
-                    <div className="flex space-x-2">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                    </div>
-                  </motion.div>
-                )}
-                <div ref={messagesEndRef} />
-              </motion.div>
+              <MessageList
+                messages={messages}
+                isLoading={isLoading}
+                chatAtBottom={chatAtBottom}
+                isKeyboardOpen={isKeyboardOpen}
+                viewportHeight={viewportHeight}
+                messagesEndRef={messagesEndRef}
+              />
             )}
           </AnimatePresence>
 
-          {/* Chat Input - Only render when not chatAtBottom */}
           {!chatAtBottom && (
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              if (!input.trim() || isLoading || isAnimating) return;
-              handleSubmit(e);
-            }} className="relative">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (isLoading || isAnimating)) {
-                    e.preventDefault();
-                  }
-                }}
-                placeholder="Ask me anything..."
-                className="w-full px-6 py-4 bg-white/10 border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:border-white/40"
-                data-element="chat-input-center"
-                title="Chat input - center of page"
-              />
-              <button
-                type="submit"
-                disabled={!input.trim() || isLoading || isAnimating}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
-                data-element="chat-submit-center"
-                title="Send message - center chat"
-              >
-                <ArrowUp size={20} />
-              </button>
-            </form>
+            <CenterChatInput
+              input={input}
+              setInput={setInput}
+              onSubmit={handleSubmit}
+              isLoading={isLoading}
+              isAnimating={isAnimating}
+            />
           )}
         </motion.div>
       </div>
@@ -845,345 +649,26 @@ export default function Home() {
       <div 
         className="relative z-10"
         style={{ 
-          marginTop: showMiniHeader ? (isMiniHeaderExpanded ? 'calc(20vh + 3rem)' : '6rem') : '3rem'
+          marginTop: showMiniHeader ? (isMiniHeaderExpanded ? 'calc(20vh + 3.5rem)' : '6.5rem') : '3.5rem'
         }}
       >
-        {/* Summary Section - Full Page */}
-        <section id="summary" className="min-h-screen flex items-center px-8">
-          <motion.div
-            ref={aboutMeRef}
-            className="max-w-6xl mx-auto w-full"
-          >
-            <div className="border-t border-gray-600 pt-8 mb-8">
-              <h2 className="text-sm font-medium text-gray-400 tracking-widest uppercase mb-8">SUMMARY</h2>
-            </div>
-            <p className="text-2xl leading-relaxed text-gray-300 max-w-4xl">
-              AI Engineer with 3+ years of production AI development experience, serving 4,000+ monthly active users. 
-              Early enterprise OpenAI API adopter (August 2023) with expertise in agent-to-agent communication, 
-              MCP protocol implementation, and full-stack AI applications. Specialized in building scalable AI copilots, 
-              real-time voice systems, and custom agent architectures for enterprise environments.
-            </p>
-          </motion.div>
-        </section>
-
-        {/* Professional Experience Section - Full Page */}
-        <section id="experience" className="min-h-screen flex items-center px-8">
-          <div className="max-w-6xl mx-auto w-full">
-            <div className="border-t border-gray-600 pt-8 mb-12">
-              <h2 className="text-sm font-medium text-gray-400 tracking-widest uppercase">EXPERIENCE</h2>
-            </div>
-            
-            <div className="space-y-16">
-              <div className="border-b border-gray-700 pb-16">
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <div className="flex items-center text-sm text-gray-400 mb-2">
-                      <span>2024 - PRESENT</span>
-                      <div className="w-2 h-2 bg-green-500 rounded-full mx-4"></div>
-                      <span>BELLEVUE, WA</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <h3 className="text-4xl font-light text-white mb-2">T-Mobile</h3>
-                <h4 className="text-xl text-gray-300 mb-8">Software Engineer</h4>
-                
-                <p className="text-lg text-gray-300 leading-relaxed mb-6 max-w-4xl">
-                  Architect and maintain AI copilot serving 4,000+ unique monthly users. First engineer in organization to implement Model Context Protocol (MCP). Built custom agent-to-agent communication systems and developed actionable AI tools including automated ticket creation.
-                </p>
-                
-                <div className="flex flex-wrap gap-2">
-                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('OpenAI API')}`}>OpenAI API</span>
-                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('MCP Protocol')}`}>MCP Protocol</span>
-                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('Agent Architecture')}`}>Agent Architecture</span>
-                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('Full-Stack')}`}>Full-Stack</span>
-                </div>
-              </div>
-              
-              <div className="border-b border-gray-700 pb-16">
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <div className="flex items-center text-sm text-gray-400 mb-2">
-                      <span>2022 - 2024</span>
-                      <div className="w-2 h-2 bg-green-500 rounded-full mx-4"></div>
-                      <span>BELLEVUE, WA</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <h3 className="text-4xl font-light text-white mb-2">T-Mobile</h3>
-                <h4 className="text-xl text-gray-300 mb-8">Associate Software Engineer</h4>
-                
-                <p className="text-lg text-gray-300 leading-relaxed mb-6 max-w-4xl">
-                  First to develop enterprise OpenAI API integration (August 2023). Led frontend development of AI troubleshooting interface. Designed and implemented Retrieval-Augmented Generation. Promoted 1 year ahead of standard timeline.
-                </p>
-                
-                <div className="flex flex-wrap gap-2">
-                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('React')}`}>React</span>
-                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('TypeScript')}`}>TypeScript</span>
-                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('RAG')}`}>RAG</span>
-                  <span className={`px-3 py-1 text-xs rounded ${getTagColor('AI Integration')}`}>AI Integration</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Projects & Skills Section - Full Page */}
-        <section id="projects-skills" className="min-h-screen flex items-center px-8">
-          <div className="max-w-6xl mx-auto w-full">
-            <div className="border-t border-gray-600 pt-8 mb-12">
-              <h2 className="text-sm font-medium text-gray-400 tracking-widest uppercase">PROJECTS & SKILLS</h2>
-            </div>
-            
-            {/* Projects */}
-            <div className="mb-20">
-              <div className="space-y-12">
-                <div className="border-b border-gray-700 pb-12">
-                  <div className="flex items-center text-sm text-gray-400 mb-4">
-                    <span>OCTOBER 2024 - PRESENT</span>
-                  </div>
-                  <h3 className="text-3xl font-light text-white mb-4">AI Receptionist System</h3>
-                  <p className="text-lg text-gray-300 leading-relaxed mb-6 max-w-4xl">
-                    Developed intelligent voice-activated receptionist with real-time speech processing and 
-                    natural language understanding using Node.js, Twilio, Google Cloud Speech, and Gemini API.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Node.js')}`}>Node.js</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Twilio')}`}>Twilio</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Google Cloud Speech')}`}>Google Cloud Speech</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Gemini API')}`}>Gemini API</span>
-                  </div>
-                </div>
-                
-                <div className="border-b border-gray-700 pb-12">
-                  <div className="flex items-center text-sm text-gray-400 mb-4">
-                    <span>AUGUST 2024 - PRESENT</span>
-                  </div>
-                  <h3 className="text-3xl font-light text-white mb-4">Medical AI Analysis Platform</h3>
-                  <p className="text-lg text-gray-300 leading-relaxed mb-6 max-w-4xl">
-                    Created AI system for automated bloodwork analysis, parsing medical documents and 
-                    generating structured health insights with Python and AI/ML APIs.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Python')}`}>Python</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('AI/ML APIs')}`}>AI/ML APIs</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Document Processing')}`}>Document Processing</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Skills */}
-            <div>
-              <h3 className="text-2xl font-light text-white mb-8">Technical Skills</h3>
-              <div className="grid md:grid-cols-3 gap-12">
-                <div>
-                  <h4 className="font-medium mb-4 text-white">AI/ML Technologies</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('OpenAI API')}`}>OpenAI API</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Azure OpenAI')}`}>Azure OpenAI</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Google Gemini')}`}>Google Gemini</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('RAG')}`}>RAG</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Vector Search')}`}>Vector Search</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('MCP Protocol')}`}>MCP Protocol</span>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-4 text-white">Programming Languages</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Python')}`}>Python</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('JavaScript')}`}>JavaScript</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Node.js')}`}>Node.js</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Java')}`}>Java</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('SQL')}`}>SQL</span>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-4 text-white">Frameworks & Libraries</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('React')}`}>React</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Streamlit')}`}>Streamlit</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('Express')}`}>Express</span>
-                    <span className={`px-3 py-1 text-xs rounded ${getTagColor('jQuery')}`}>jQuery</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Education & Achievements Section - Full Page */}
-        <section id="education-achievements" className="min-h-screen flex items-center px-8">
-          <div className="max-w-6xl mx-auto w-full">
-            <div className="border-t border-gray-600 pt-8 mb-12">
-              <h2 className="text-sm font-medium text-gray-400 tracking-widest uppercase">EDUCATION & ACHIEVEMENTS</h2>
-            </div>
-            
-            {/* Education */}
-            <div className="mb-20 border-b border-gray-700 pb-16">
-              <div className="flex items-center text-sm text-gray-400 mb-4">
-                <span>GRADUATED JUNE 2022</span>
-                <div className="w-2 h-2 bg-green-500 rounded-full mx-4"></div>
-                <span>TACOMA, WA</span>
-              </div>
-              <h3 className="text-4xl font-light text-white mb-2">University of Washington Tacoma</h3>
-              <h4 className="text-xl text-gray-300 mb-8">Bachelor of Science in Computer Science & Systems</h4>
-              <p className="text-lg text-gray-300 leading-relaxed max-w-4xl">
-                Relevant Coursework: Algorithms, Artificial Intelligence, Advanced Software Engineering, 
-                Matrix Algebra, Data Structures, Computer Architecture, Probability & Statistics, Machine Learning Fundamentals
-              </p>
-            </div>
-
-            {/* Achievements */}
-            <div>
-              <h3 className="text-2xl font-light text-white mb-8">Key Achievements</h3>
-              <div className="grid md:grid-cols-2 gap-12">
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-lg font-medium text-white mb-2">Production Scale</h4>
-                    <p className="text-gray-300">4,000+ monthly active users on AI systems</p>
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-medium text-white mb-2">Innovation Leadership</h4>
-                    <p className="text-gray-300">First in organization to implement MCP protocol</p>
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-medium text-white mb-2">Early Adoption</h4>
-                    <p className="text-gray-300">Enterprise AI developer since August 2023</p>
-                  </div>
-                </div>
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-lg font-medium text-white mb-2">Career Acceleration</h4>
-                    <p className="text-gray-300">Promoted 1 year early due to AI copilot success</p>
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-medium text-white mb-2">Cross-Functional Impact</h4>
-                    <p className="text-gray-300">Delivered AI solutions across multiple divisions</p>
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-medium text-white mb-2">Technical Innovation</h4>
-                    <p className="text-gray-300">Pioneered agent-to-agent communication and dynamic UI generation</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Contact/Footer Section - Full Page */}
-        <section id="contact" className="min-h-screen flex items-center px-8">
-          <div className="max-w-6xl mx-auto w-full">
-            <div className="border-t border-gray-600 pt-8 mb-12">
-              <h2 className="text-sm font-medium text-gray-400 tracking-widest uppercase">CONTACT</h2>
-            </div>
-            
-            <div className="mb-16">
-              <h3 className="text-6xl font-light text-white mb-8 leading-tight">HAVE AN<br />OPPORTUNITY?</h3>
-              <p className="text-xl text-gray-300 max-w-4xl leading-relaxed">
-                I'm open to new roles, freelance projects, and creative collaborations! If you have an idea you'd like to discuss, let's get in touch.
-              </p>
-            </div>
-            
-            <div className="mb-12">
-              <a href="mailto:inquiries@tonytle.dev" className="text-3xl text-white hover:text-gray-300 transition-colors duration-200">
-                inquiries@tonytle.dev
-              </a>
-            </div>
-            <div className="flex space-x-8">
-              <a 
-                href="https://github.com/Tole-Git" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition-colors duration-200 flex items-center space-x-2"
-              >
-                <span>GitHub</span>
-              </a>
-              <a 
-                href="https://www.linkedin.com/in/letan87262910/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white transition-colors duration-200 flex items-center space-x-2"
-              >
-                <span>LinkedIn</span>
-              </a>
-            </div>
-          </div>
-        </section>
+        <Summary />
+        <Experience />
+        <ProjectsSkills />
+        <EducationAchievements />
+        <Contact />
       </div>
 
-      {/* Sticky Chat Input - Only when chat is active */}
-      <AnimatePresence>
-        {chatAtBottom && (
-          <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className={`fixed left-0 right-0 z-50 bg-transparent border-t border-white/10 p-4 ${
-              isKeyboardOpen 
-                ? 'bottom-0' // When keyboard is open, position at true bottom
-                : 'bottom-0' // When keyboard is closed, position at screen bottom
-            }`}
-            data-element="sticky-chat-footer"
-            title="Sticky Chat Input Footer"
-            style={{
-              // Use viewport height when keyboard is open to ensure visibility
-              bottom: isKeyboardOpen ? '0px' : '0px',
-              // Ensure the input stays above the keyboard
-              transform: isKeyboardOpen ? 'translateY(0)' : 'translateY(0)'
-            }}
-          >
-            <div className="max-w-4xl mx-auto">
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                if (!input.trim() || isLoading || isAnimating) return;
-                handleSubmit(e);
-              }} className="relative">
-                <input
-                  ref={chatInputRef}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (isLoading || isAnimating)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onFocus={() => {
-                    // On mobile, when input is focused and keyboard opens,
-                    // scroll to make input visible
-                    if (window.innerWidth <= 768) {
-                      setTimeout(() => {
-                        if (chatInputRef.current) {
-                          chatInputRef.current.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'center' 
-                          });
-                        }
-                      }, 300);
-                    }
-                  }}
-                  placeholder="Ask me anything..."
-                  className="w-full px-6 py-4 bg-white/10 border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:border-white/40"
-                  data-element="chat-input-sticky"
-                  title="Chat input - sticky footer"
-                />
-                <button
-                  type="submit"
-                  disabled={!input.trim() || isLoading || isAnimating}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors duration-200"
-                  data-element="chat-submit-sticky"
-                  title="Send message - sticky footer"
-                >
-                  <ArrowUp size={20} />
-                </button>
-              </form>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <StickyChatInput
+        visible={chatAtBottom}
+        input={input}
+        setInput={setInput}
+        onSubmit={handleSubmit}
+        isLoading={isLoading}
+        isAnimating={isAnimating}
+        chatInputRef={chatInputRef}
+        isKeyboardOpen={isKeyboardOpen}
+      />
 
       {/* Go to Top Button */}
       <AnimatePresence>

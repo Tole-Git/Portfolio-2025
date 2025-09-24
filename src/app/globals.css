@@ -234,6 +234,27 @@ body {
   box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
 }
 
+/* Subtle purple background glow */
+.glow-purple-subtle {
+  position: relative;
+}
+
+.glow-purple-subtle::after {
+  content: "";
+  position: absolute;
+  inset: -0.15em -0.25em; /* slight padding around text */
+  border-radius: 0.4em;
+  background: radial-gradient(60% 50% at 15% 50%, rgba(139, 92, 246, 0.18) 0%, rgba(139, 92, 246, 0.10) 35%, rgba(139, 92, 246, 0.04) 60%, transparent 100%);
+  filter: blur(8px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-purple-subtle > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* Mobile viewport and keyboard handling */
 @supports (height: 100dvh) {
   .min-h-screen {
@@ -289,4 +310,87 @@ body {
     bottom: env(keyboard-inset-height, 0px);
     transform: translateY(0);
   }
+}
+
+/* Animated gradient text utility (left and right colors via CSS variables) */
+.gradient-text {
+  background: linear-gradient(to right, var(--grad-left, #10b981), #ffffff 50%, var(--grad-right, #3b82f6));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Duo-color (no white) gradient text */
+.gradient-text-duo {
+  /* Bias the transition so one side covers ~3/4 and the other ~1/4.
+     Control with --grad-split (default 75%). */
+  background: linear-gradient(
+    to right,
+    var(--grad-left, #10b981) 0%,
+    var(--grad-right, #3b82f6) var(--grad-split, 75%)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* New: 50/50 purple to white gradient text */
+.gradient-text-half {
+  background: linear-gradient(
+    to right,
+    var(--grad-left, #8b5cf6) 0%,
+    #ffffff 50%,
+    var(--grad-right, #ffffff) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Adjustable hard-split gradient text (left color until split, right after) */
+.gradient-text-split {
+  background: linear-gradient(
+    to right,
+    var(--grad-left, #8b5cf6) 0%,
+    var(--grad-left, #8b5cf6) var(--grad-split, 75%),
+    var(--grad-right, #ffffff) var(--grad-split, 75%),
+    var(--grad-right, #ffffff) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Left-weighted black→white gradient text for trailing letters */
+.gradient-text-fade-left {
+  background: linear-gradient(
+    to right,
+    #9ca3af 0%,
+    #bfc6d0 15%,
+    #d1d5db 30%,
+    #e5e7eb 50%,
+    #f3f4f6 70%,
+    #ffffff 85%,
+    #ffffff 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-animated {
+  /* Move from left to right across 200% width then repeat */
+  background-size: 200% 100%;
+  animation: gradient-shift 2.5s linear infinite;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
