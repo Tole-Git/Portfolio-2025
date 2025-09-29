@@ -152,6 +152,20 @@ body {
   font-family: var(--font-geist-sans);
 }
 
+/* Golden-ratio max width utilities */
+/* φ ≈ 1.618. Choose a comfortable reading width that scales well on large screens. */
+/* Base cap ~ 68rem (≈1088px) with tighter text column at ~ 42rem (≈672px). */
+.container-golden {
+  max-width: 68rem; /* ~1088px */
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+.measure-golden {
+  max-width: 42rem; /* ~672px ≈ 68rem / φ */
+}
+
 /* Custom scrollbar styles */
 ::-webkit-scrollbar {
   width: 8px;
