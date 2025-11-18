@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUp, ChevronDown, ArrowUp, MessageSquare, X, Menu, Search } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import uwLogo from './assets/uw-logo.png';
+import Image, { StaticImageData } from 'next/image';
 
 interface Message {
   id: string;
@@ -82,39 +83,6 @@ const getTagClass = (tagText: string): string => {
   return tagStyleMap[key] ?? getTagColor(tagText);
 };
 
-// Deterministic gradient palette for category titles
-const gradientPalette = [
-  '#10b981', // emerald
-  '#f43f5e', // rose
-  '#8b5cf6', // violet
-  '#3b82f6', // blue
-  '#f59e0b', // amber
-  '#06b6d4', // cyan
-  '#84cc16', // lime
-  '#ef4444', // red
-  '#22d3ee', // sky/cyan-light
-  '#a3e635', // lime-light
-  '#eab308'  // yellow
-];
-
-const hashString = (input: string): number => {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash << 5) - hash + input.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-};
-
-const getCategoryGradient = (id: string): { left: string; right: string } => {
-  const base = hashString(id);
-  const leftIdx = base % gradientPalette.length;
-  let rightIdx = (base * 7 + 3) % gradientPalette.length;
-  if (rightIdx === leftIdx) rightIdx = (rightIdx + 1) % gradientPalette.length;
-  const left = gradientPalette[leftIdx];
-  const right = gradientPalette[rightIdx];
-  return { left, right };
-};
 
 export default function Home() {
   // Authentication states
@@ -136,8 +104,6 @@ export default function Home() {
   const [activeSection, setActiveSection] = useState<string>('');
   const [navSearch, setNavSearch] = useState('');
   
-  
-  
   // Animation sequence states
   const [isAnimating, setIsAnimating] = useState(false);
   const [titleVisible, setTitleVisible] = useState(true);
@@ -154,6 +120,37 @@ export default function Home() {
   const miniMessagesEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
+  // Check if user is already authenticated
+  const checkAuthStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      
+      // If session expired or deployment reset occurred, automatically logout
+      if (!data.authenticated && isAuthenticated) {
+        // Session was valid but now invalid - force logout
+        setIsAuthenticated(false);
+        setMessages([]);
+        setShowChat(false);
+        setTitleVisible(true);
+        setChatAtBottom(false);
+        setMessagesVisible(false);
+        setIsAnimating(false);
+        console.log('Session expired or deployment reset - automatically logged out');
+      } else {
+        setIsAuthenticated(data.authenticated);
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setAuthCheckComplete(true);
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     setIsClient(true);
     // Check authentication status on mount
@@ -167,7 +164,7 @@ export default function Home() {
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => clearInterval(sessionCheckInterval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, checkAuthStatus]);
 
   // Mobile keyboard detection and viewport handling
   useEffect(() => {
@@ -211,40 +208,8 @@ export default function Home() {
         window.visualViewport.removeEventListener('resize', handleViewportChange);
         window.visualViewport.removeEventListener('scroll', handleViewportChange);
       }
-      window.removeEventListener('resize', handleViewportChange);
     };
   }, [isClient, isKeyboardOpen, scrollPositionBeforeKeyboard]);
-
-  // Check if user is already authenticated
-  const checkAuthStatus = async () => {
-    try {
-      const response = await fetch('/api/auth', {
-        method: 'GET',
-        credentials: 'include',
-      });
-      const data = await response.json();
-      
-      // If session expired or deployment reset occurred, automatically logout
-      if (!data.authenticated && isAuthenticated) {
-        // Session was valid but now invalid - force logout
-        setIsAuthenticated(false);
-        setMessages([]);
-        setShowChat(false);
-        setTitleVisible(true);
-        setChatAtBottom(false);
-        setMessagesVisible(false);
-        setIsAnimating(false);
-        console.log('Session expired or deployment reset - automatically logged out');
-      } else {
-        setIsAuthenticated(data.authenticated);
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      setIsAuthenticated(false);
-    } finally {
-      setAuthCheckComplete(true);
-    }
-  };
 
   // Handle login
   const handleLogin = async (e: React.FormEvent) => {
@@ -1030,13 +995,14 @@ export default function Home() {
           >
             <div className="border-t border-gray-600 pt-8 mb-8">
               <h2 className="text-sm font-medium tracking-widest uppercase mb-8">
-                {(() => { const g = getCategoryGradient('summary'); return (
+                {(() => { 
+                  return (
                   <span
                     className="gradient-text-duo"
                     style={{
-                      ['--grad-left' as any]: '#3b82f6',
-                      ['--grad-right' as any]: '#8b5cf6',
-                      ['--grad-split' as any]: '75%'
+                      ['--grad-left' as string]: '#3b82f6',
+                      ['--grad-right' as string]: '#8b5cf6',
+                      ['--grad-split' as string]: '75%'
                     }}
                   >
                     SUMMARY
@@ -1064,13 +1030,14 @@ export default function Home() {
           >
             <div className="border-t border-gray-600 pt-8 mb-12">
               <h2 className="text-sm font-medium tracking-widest uppercase">
-                {(() => { const g = getCategoryGradient('experience'); return (
+                {(() => {
+                return (
                   <span
                     className="gradient-text-duo"
                     style={{
-                      ['--grad-left' as any]: '#84cc16',
-                      ['--grad-right' as any]: '#3b82f6',
-                      ['--grad-split' as any]: '75%'
+                      ['--grad-left' as string]: '#84cc16',
+                      ['--grad-right' as string]: '#3b82f6',
+                      ['--grad-split' as string]: '75%'
                     }}
                   >
                     EXPERIENCE
@@ -1146,13 +1113,14 @@ export default function Home() {
           >
             <div className="border-t border-gray-600 pt-8 mb-12">
               <h2 className="text-sm font-medium tracking-widest uppercase"> 
-                {(() => { const g = getCategoryGradient('projects'); return (
+                {(() => {
+                return (
                   <span
                     className="gradient-text-duo"
                     style={{
-                      ['--grad-left' as any]: '#f59e0b',
-                      ['--grad-right' as any]: '#ef4444',
-                      ['--grad-split' as any]: '75%'
+                      ['--grad-left' as string]: '#f59e0b',
+                      ['--grad-right' as string]: '#ef4444',
+                      ['--grad-split' as string]: '75%'
                     }}
                   >
                     PROJECTS
@@ -1205,7 +1173,7 @@ export default function Home() {
 
                 <div className="border-b border-gray-700 pb-12">
                   <div className="flex items-center text-sm text-gray-400 mb-4">
-                    <span>April 2025 - PRESENT</span>
+                    <span>APRIL 2025 - PRESENT</span>
                     <div className="w-2 h-2 bg-green-500 rounded-full mx-4"></div>
                   </div>
                   <h3 className="text-3xl font-light text-white mb-4">Medical AI Analysis Platform</h3>
@@ -1239,13 +1207,14 @@ export default function Home() {
           >
             <div className="border-t border-gray-600 pt-8 mb-12">
               <h2 className="text-sm font-medium tracking-widest uppercase">
-                {(() => { const g = getCategoryGradient('education-achievements'); return (
+                {(() => {
+                  return (
                   <span
                     className="gradient-text-duo"
                     style={{
-                      ['--grad-left' as any]: '#ddd6fe',
-                      ['--grad-right' as any]: '#c4b5fd',
-                      ['--grad-split' as any]: '75%'
+                      ['--grad-left' as string]: '#ddd6fe',
+                      ['--grad-right' as string]: '#c4b5fd',
+                      ['--grad-split' as string]: '75%'
                     }}
                   >
                     EDUCATION & ACHIEVEMENTS
@@ -1264,7 +1233,7 @@ export default function Home() {
               <h3 className="text-4xl font-light text-white mb-2">
                 <span className="glow-purple-subtle inline-block">
                   <span className="align-middle inline-block mr-2" style={{ width: '1.14em', height: '1.14em', transform: 'translateY(-4px)' }}>
-                    <img src={uwLogo.src ?? (uwLogo as any)} alt="UW Logo" className="w-full h-full object-contain" />
+                    <Image src={uwLogo.src ?? (uwLogo as StaticImageData)} alt="UW Logo" className="w-full h-full object-contain" />
                   </span>
                   <span className="text-white font-semibold">University of Washington</span>
                 </span>
@@ -1360,13 +1329,14 @@ export default function Home() {
           >
             <div className="border-t border-gray-600 pt-8 mb-12">
               <h2 className="text-sm font-medium tracking-widest uppercase">
-                {(() => { const g = getCategoryGradient('contact'); return (
+                {(() => {
+                  return (
                   <span
                     className="gradient-text-duo"
                     style={{
-                      ['--grad-left' as any]: '#8b5cf6',
-                      ['--grad-right' as any]: '#3b82f6',
-                      ['--grad-split' as any]: '75%'
+                      ['--grad-left' as string]: '#8b5cf6',
+                      ['--grad-right' as string]: '#3b82f6',
+                      ['--grad-split' as string]: '75%'
                     }}
                   >
                     CONTACT
